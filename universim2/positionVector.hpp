@@ -1,6 +1,8 @@
 #ifndef POSITIONVECTOR_HPP
 #define POSITIONVECTOR_HPP
 
+#include <string>
+
 class Matrix3d;
 
 class PositionVector{
@@ -10,6 +12,7 @@ private:
     double z;
     double length;
     bool validLength = false;
+    std::string vectorString;
 
 public:
     PositionVector();
@@ -39,6 +42,8 @@ public:
     // Functions for the computation of multipole expansion
     double rQr(Matrix3d Q);
     PositionVector Qr(Matrix3d Q);
+
+    const char *toString();
     
 };
 

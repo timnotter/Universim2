@@ -7,7 +7,6 @@
 #include "renderer.hpp"
 #include "star.hpp"
 
-
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate){
     // printf("Renderer constructor begin\n");
     this->myWindow = myWindow;
@@ -66,6 +65,14 @@ void Renderer::draw(){
     drawObjects();
     drawUI();
 
+    // Debugging purposes
+    // for(int i=std::max(1, (signed int) ((signed int)(dataPoints.size())-windowWidth));i<dataPoints.size();i++){
+    //     drawLine(WHITE_COL, i%windowWidth-1, (dataPoints[i-1]-370000000.0)/50000000*windowHeight, i%windowWidth, (dataPoints[i]-370000000.0)/50000000*windowHeight);
+    // }
+    // for(int i=0;i<dataPoints2.size();i++){
+    //     drawPoint(RED_COL, dataPoints2[i]/400000000.0*(windowHeight/2)+windowWidth/2, dataPoints3[i]/400000000.0*(windowHeight/2)+windowHeight/2);
+    // }
+
     // XClearWindow(myWindow->getDisplay(), *(myWindow->getWindow()));          // Not neccessary, probably because of the swap
     XdbeSwapInfo swap_info = {*(myWindow->getWindow()), 1};
     XdbeSwapBuffers(myWindow->getDisplay(), &swap_info, 1);
@@ -85,7 +92,7 @@ void Renderer::drawObjects(){
 	// struct timespec currTime;
 	// clock_gettime(CLOCK_MONOTONIC, &prevTime);
 
-    int threadNumber = 8;
+    int threadNumber = 1;
     int amount = allObjects->size()/threadNumber;
     // printf("Total objects: %ld\n", allObjects->size());
     std::vector<std::thread> threads;
@@ -161,6 +168,7 @@ void Renderer::drawUI(){
     }
     // Display date
     drawString(BLACK_COL, windowWidth-75, 30, date->toString(true));
+    // printf("%s\n", date->toString(false));
 
 }
 

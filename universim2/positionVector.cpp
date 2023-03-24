@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdio>
+#include <sstream>
 #include "positionVector.hpp"
 #include "matrix3d.hpp"
 
@@ -140,4 +141,12 @@ PositionVector PositionVector::Qr(Matrix3d Q){
     QR.y = x * Q.getEntry(1, 0) + y * Q.getEntry(1, 1) + z * Q.getEntry(1, 2);
     QR.z = x * Q.getEntry(2, 0) + y * Q.getEntry(2, 1) + z * Q.getEntry(2, 2);
     return QR;
+}
+
+const char *PositionVector::toString(){
+    std::ostringstream dateStream;
+    dateStream << x << ", " << y << ", " << z;
+    vectorString = dateStream.str();
+
+    return vectorString.c_str();
 }

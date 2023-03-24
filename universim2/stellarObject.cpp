@@ -131,6 +131,9 @@ void StellarObject::place(){
         // printf("Placed center of mass of %s at %f, %f, %f\n", name, centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ());
 
 
+        // -------------------------------------------------------------------------- TODO --------------------------------------------------------------------------
+        // Compute speed around centre of mass of system after children are placed
+
         // Speed should then be: 
         // v = sqrt(mu / p) * [-sin(v + w) * cos(O) - cos(v + w) * sin(O) * cos(i), -sin(v + w) * sin(O) + cos(v + w) * cos(O) * cos(i), cos(v + w) * sin(i)]
         if(semiMajorAxis!=0){
@@ -322,6 +325,10 @@ PositionVector StellarObject::getVelocity(){
     return velocity;
 }
 
+PositionVector StellarObject::getLocalAcceleration(){
+    return localAcceleration;
+}
+
 PositionVector StellarObject::getCentreOfMass(){
     return centreOfMass;
 }
@@ -389,8 +396,9 @@ void StellarObject::updateCentreOfMass(){
     double totalMass = mass;
     PositionVector adjustedCoM = position * mass;
     for(StellarObject *child: children){
-        totalMass += child->getMass();
-        adjustedCoM += child->getPosition() * child->getMass();
+        totalMass += child->getTotalMass();
+        child->updateCentreOfMass();
+        adjustedCoM += child->getCentreOfMass() * child->getTotalMass();
     }
     centreOfMass = adjustedCoM / totalMass;
 }

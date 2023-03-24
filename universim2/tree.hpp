@@ -4,6 +4,7 @@
 #include "stellarObject.hpp"
 #include "treeCodeNode.hpp"
 #include "mutex"
+#include "renderer.hpp"
 
 #define STELLAR_TREE true
 #define LOCAL_TREE false
@@ -30,7 +31,7 @@ public:
 
     void buildTree();
     void destroyTree();
-    void update(double timestep);
+    void update(double timestep, Renderer *renderer);
 
     TreeCodeNode *getRoot();
 

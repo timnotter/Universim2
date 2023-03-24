@@ -86,29 +86,41 @@ CMakeFiles/universim2.dir/starSystem.cpp.o: ../starSystem.hpp
 CMakeFiles/universim2.dir/starSystem.cpp.o: ../stellarObject.hpp
 
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../constants.hpp
+CMakeFiles/universim2.dir/stellarObject.cpp.o: ../date.hpp
+CMakeFiles/universim2.dir/stellarObject.cpp.o: ../drawObject.hpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../matrix3d.hpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../positionVector.hpp
+CMakeFiles/universim2.dir/stellarObject.cpp.o: ../renderer.hpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../starSystem.hpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../stellarObject.cpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../stellarObject.hpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../tree.hpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o: ../treeCodeNode.hpp
+CMakeFiles/universim2.dir/stellarObject.cpp.o: ../window.hpp
 
 CMakeFiles/universim2.dir/tree.cpp.o: ../constants.hpp
+CMakeFiles/universim2.dir/tree.cpp.o: ../date.hpp
+CMakeFiles/universim2.dir/tree.cpp.o: ../drawObject.hpp
 CMakeFiles/universim2.dir/tree.cpp.o: ../matrix3d.hpp
 CMakeFiles/universim2.dir/tree.cpp.o: ../positionVector.hpp
+CMakeFiles/universim2.dir/tree.cpp.o: ../renderer.hpp
 CMakeFiles/universim2.dir/tree.cpp.o: ../stellarObject.hpp
 CMakeFiles/universim2.dir/tree.cpp.o: ../tree.cpp
 CMakeFiles/universim2.dir/tree.cpp.o: ../tree.hpp
 CMakeFiles/universim2.dir/tree.cpp.o: ../treeCodeNode.hpp
+CMakeFiles/universim2.dir/tree.cpp.o: ../window.hpp
 
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../constants.hpp
+CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../date.hpp
+CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../drawObject.hpp
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../matrix3d.hpp
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../positionVector.hpp
+CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../renderer.hpp
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../stellarObject.hpp
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../tree.hpp
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../treeCodeNode.cpp
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../treeCodeNode.hpp
+CMakeFiles/universim2.dir/treeCodeNode.cpp.o: ../window.hpp
 
 CMakeFiles/universim2.dir/window.cpp.o: ../constants.hpp
 CMakeFiles/universim2.dir/window.cpp.o: ../date.hpp

@@ -130,6 +130,10 @@ public:
     void quicksort(int start, int end);
     int quicksortInsert(int start, int end);
     void initialiseReferenceObject();
+
+    std::vector<int> dataPoints;
+    std::vector<int> dataPoints2;
+    std::vector<int> dataPoints3;
 };
 
 #endif

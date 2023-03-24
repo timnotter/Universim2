@@ -4,6 +4,7 @@
 #include <sstream>
 
 class Date{
+private:
     int year;
     int month;
     int day;
@@ -11,9 +12,8 @@ class Date{
     int minute;
     int temp;           //Variable for temporary storage
     double second;
-public:
     std::string date;
-
+public:
     Date(int day, int month, int year);
     Date();
     const char *toString(bool onlyDate = false);

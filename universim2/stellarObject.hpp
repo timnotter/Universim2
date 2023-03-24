@@ -83,6 +83,7 @@ public:
     double getZ();
     PositionVector getPosition();
     PositionVector getVelocity();
+    PositionVector getLocalAcceleration();
     PositionVector getCentreOfMass();
     PositionVector getUpdatedCentreOfMass();
     double getRadius();

@@ -87,29 +87,41 @@ CMakeFiles/universim2.dir/starSystem.cpp.o
  /home/tim/vs-code-workplace/Universim2/universim2/stellarObject.hpp
 CMakeFiles/universim2.dir/stellarObject.cpp.o
  /home/tim/vs-code-workplace/Universim2/universim2/constants.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/date.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/drawObject.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/matrix3d.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/positionVector.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/renderer.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/starSystem.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/stellarObject.cpp
  /home/tim/vs-code-workplace/Universim2/universim2/stellarObject.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/tree.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/treeCodeNode.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/window.hpp
 CMakeFiles/universim2.dir/tree.cpp.o
  /home/tim/vs-code-workplace/Universim2/universim2/constants.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/date.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/drawObject.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/matrix3d.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/positionVector.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/renderer.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/stellarObject.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/tree.cpp
  /home/tim/vs-code-workplace/Universim2/universim2/tree.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/treeCodeNode.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/window.hpp
 CMakeFiles/universim2.dir/treeCodeNode.cpp.o
  /home/tim/vs-code-workplace/Universim2/universim2/constants.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/date.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/drawObject.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/matrix3d.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/positionVector.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/renderer.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/stellarObject.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/tree.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/treeCodeNode.cpp
  /home/tim/vs-code-workplace/Universim2/universim2/treeCodeNode.hpp
+ /home/tim/vs-code-workplace/Universim2/universim2/window.hpp
 CMakeFiles/universim2.dir/window.cpp.o
  /home/tim/vs-code-workplace/Universim2/universim2/constants.hpp
  /home/tim/vs-code-workplace/Universim2/universim2/date.hpp
