@@ -7,10 +7,10 @@
 class StarSystem : public StellarObject{
 private:
     // Flag if starsystem consists only of one star, then we don't need to calculate local acceleration
-    bool loneStar = true;
+    bool loneStar;
 public:
     // Spawn starsystem with a number of "premade" stars
-    StarSystem(const char *name, double meanDistance, double eccentricity, double inclination, int numberOfStars = 0);
+    StarSystem(const char *name, long double meanDistance, long double eccentricity, long double inclination, int numberOfStars = 0);
     StarSystem(int numberOfStars = 1);
     void generateName();
     void setLoneStar(bool loneStar);

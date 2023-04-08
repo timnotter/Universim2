@@ -71,7 +71,23 @@ const char *Date::toString(bool onlyDate){
     return date.c_str();
 }
 
-void Date::incSecond(double delta){
+const char *Date::timeToString(){
+    std::ostringstream timeStream;
+    switch(hour>=10){
+        case true: timeStream << hour << ":"; break;
+        case false: timeStream << "0" << hour << ":"; break;
+    }
+    switch(minute>=10){
+        case true: timeStream /*<< date */<< minute << " "; break;
+        case false: timeStream/*<< date*/ << "0" << minute << " "; break;
+    }
+    time = timeStream.str();
+
+    //Return char* of string
+    return time.c_str();
+}
+
+void Date::incSecond(long double delta){
     second += delta;
     if(second/60>=1){
         temp = 0;
@@ -84,7 +100,7 @@ void Date::incSecond(double delta){
     return;
 }
 
-void Date::incMinute(double delta){
+void Date::incMinute(long double delta){
     minute += delta;
     temp = minute/60;
     if(temp>=1){
@@ -95,7 +111,7 @@ void Date::incMinute(double delta){
     return;
 }
 
-void Date::incHour(double delta){
+void Date::incHour(long double delta){
     hour += delta;
     temp = hour/24;
     if(temp>=1){
@@ -106,7 +122,7 @@ void Date::incHour(double delta){
     return;
 }
 
-void Date::incDay(double delta){
+void Date::incDay(long double delta){
     day += delta;
     int numDays = dayCount();
     temp = day/(numDays+1);
@@ -121,7 +137,7 @@ void Date::incDay(double delta){
     return;
 }
 
-void Date::incMonth(double delta){
+void Date::incMonth(long double delta){
     month += delta;
     temp = month/13;
     if(temp>=1){
@@ -132,7 +148,7 @@ void Date::incMonth(double delta){
     return;
 }
 
-void Date::incYear(double delta){
+void Date::incYear(long double delta){
     year += delta;
     return;
 }

@@ -5,9 +5,9 @@
 #include "stellarObject.hpp"
 
 class GalacticCore : public StellarObject{
-    public:
-        GalacticCore(const char *name, double radius, double mass, double meanDistance);
-        GalacticCore(const char *name, double radius, double mass, double meanDistance, int colour);
+public:
+    GalacticCore(const char *name, long double radius, long double mass, long double meanDistance);
+    GalacticCore(const char *name, long double radius, long double mass, long double meanDistance, int colour);
 };
 
 #endif

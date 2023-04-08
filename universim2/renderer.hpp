@@ -56,7 +56,7 @@ private:
     int tempX;
     int tempY;
 
-    double cameraMoveAmount = astronomicalUnit;
+    long double cameraMoveAmount = astronomicalUnit;
 
     // Vector of stellar objects
     std::vector<StellarObject*> *galaxies;
@@ -104,7 +104,7 @@ public:
     int drawRect(unsigned int col, int x, int y, int width, int height);
     int drawCircle(unsigned int col, int x, int y, int diam);
     int drawString(unsigned int col, int x, int y, const char *stringToBe);
-    void rotateCamera(double angle, short axis);
+    void rotateCamera(long double angle, short axis);
     void moveCamera(short direction, short axis);
     void increaseCameraMoveAmount();
     void decreaseCameraMoveAmount();

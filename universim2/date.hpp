@@ -5,24 +5,26 @@
 
 class Date{
 private:
-    int year;
+    long year;
     int month;
     int day;
     int hour;
     int minute;
     int temp;           //Variable for temporary storage
-    double second;
+    long double second;
     std::string date;
+    std::string time;
 public:
     Date(int day, int month, int year);
     Date();
     const char *toString(bool onlyDate = false);
-    void incSecond(double delta);
-    void incMinute(double delta);
-    void incHour(double delta);
-    void incDay(double delta);
-    void incMonth(double delta);
-    void incYear(double delta);
+    const char *timeToString();
+    void incSecond(long double delta);
+    void incMinute(long double delta);
+    void incHour(long double delta);
+    void incDay(long double delta);
+    void incMonth(long double delta);
+    void incYear(long double delta);
 
     int dayCount();
     bool checkDate();

@@ -6,7 +6,7 @@
 
 static int randomStarsGenerated = 0;
 
-Star::Star(const char *name, double radius, double mass, double meanDistance, double eccentricity, double inclination, int surfaceTemperature) : StellarObject(name, 2, radius, mass, meanDistance, eccentricity, inclination){
+Star::Star(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int surfaceTemperature) : StellarObject(name, 2, radius, mass, meanDistance, eccentricity, inclination){
     if(surfaceTemperature==0){
         // Calculate surface temperature
     }
@@ -17,7 +17,7 @@ Star::Star(const char *name, double radius, double mass, double meanDistance, do
     findColour();
 }
 
-Star::Star(const char *name, double mass, double meanDistance, double eccentricity, double inclination) : StellarObject(name, 2, 0, mass, meanDistance, eccentricity, inclination){
+Star::Star(const char *name, long double mass, long double meanDistance, long double eccentricity, long double inclination) : StellarObject(name, 2, 0, mass, meanDistance, eccentricity, inclination){
     //------------------------------------------------------------ TODO, but probably being phased out ------------------------------------------------------------
     // Adjust radius and surface temperature to fit mass
     surfaceTemperature = 6000;
@@ -26,7 +26,7 @@ Star::Star(const char *name, double mass, double meanDistance, double eccentrici
     findColour();
 }
 
-Star::Star(const char *name, double meanDistance, double eccentricity, double inclination) : StellarObject(name, 2, 0, 0, meanDistance, eccentricity, inclination){
+Star::Star(const char *name, long double meanDistance, long double eccentricity, long double inclination) : StellarObject(name, 2, 0, 0, meanDistance, eccentricity, inclination){
     //------------------------------------------------------------ TODO ------------------------------------------------------------
     // Create a random star with real probabilities
     generateAndDetermineClassification();
@@ -107,16 +107,16 @@ void Star::generateAndDetermineClassification(){
     srand(currTime.tv_nsec);
 
     // We generate a number between 0 and 1
-    double randomNumber = (double)rand() / RAND_MAX;
+    long double randomNumber = (long double)rand() / RAND_MAX;
 
     // Now we transform this number into a spectral classification according to measured probability in solar neighbourhood
-    const double OClassProbability = 0.1133334E-4;
-    const double atLeastBClassProbability = 0.5533334E-4 + OClassProbability;
-    const double atLeastAClassProbability = 0.3635334E-2 + atLeastBClassProbability;
-    const double atLeastFClassProbability = 0.8269334E-2 + atLeastAClassProbability;
-    const double atLeastGClassProbability = 0.38151E-1 + atLeastFClassProbability;
-    const double atLeastKClassProbability = 0.1656757 + atLeastGClassProbability;
-    const double atLeastMClassProbability = 0.693402 + atLeastKClassProbability;
+    const long double OClassProbability = 0.1133334E-4;
+    const long double atLeastBClassProbability = 0.5533334E-4 + OClassProbability;
+    const long double atLeastAClassProbability = 0.3635334E-2 + atLeastBClassProbability;
+    const long double atLeastFClassProbability = 0.8269334E-2 + atLeastAClassProbability;
+    const long double atLeastGClassProbability = 0.38151E-1 + atLeastFClassProbability;
+    const long double atLeastKClassProbability = 0.1656757 + atLeastGClassProbability;
+    const long double atLeastMClassProbability = 0.693402 + atLeastKClassProbability;
 
     int maxTemperature;
     int minTemperature;
@@ -168,7 +168,7 @@ void Star::generateAndDetermineClassification(){
     temperatureDifference = maxTemperature - minTemperature;
 
     // Now we determine the subclass with each having the same probability
-    randomNumber = (double)rand() / RAND_MAX;
+    randomNumber = (long double)rand() / RAND_MAX;
     surfaceTemperature = minTemperature + (int) (temperatureDifference * randomNumber);
     if(randomNumber < 0.1){
         spectralSubType = '9';
@@ -207,9 +207,9 @@ void Star::generateAndDetermineClassification(){
 void Star::generateMass(){
     // The mass that is generated here is not totally realistic, we don't tighten the mass possibilities around the spectral subtype
     // but only around the spectral type itself
-    double maxMass;
-    double minMass;
-    double massDifference;
+    long double maxMass;
+    long double minMass;
+    long double massDifference;
     switch(spectralType){
         case 'O':
             maxMass = 150 * solarMass;
@@ -254,7 +254,7 @@ void Star::generateMass(){
 
     // We generate a number between 0 and 1, the square will determine the total mass - to model somewhat of a bias towards smaller objects
     // The power of 2 is arbitrarily chosen and not based on science
-    double randomNumber = (double)rand() / RAND_MAX;
+    long double randomNumber = (long double)rand() / RAND_MAX;
     setMass(minMass + std::pow(randomNumber, 2) * massDifference);
 
     approximateRadiusFromMassAndSpectralType();
@@ -265,7 +265,7 @@ void Star::approximateRadiusFromMassAndSpectralType(){
     // but also reasonably accurate a for each spectral type. 
     // Only ChatGPT knows if there values are correct :)
     // Could be done for every subtype, for which the values would be stored in a txt
-    double a;
+    long double a;
     switch(spectralType){
         case 'O':
             a = 1.65;
@@ -347,7 +347,7 @@ void Star::determineClassification(){
     }
     temperatureDifference = maxTemperature - minTemperature;
     int surfaceTemperatureOverMinTemperature = surfaceTemperature - minTemperature;
-    double temperatureRelation = ((double)surfaceTemperatureOverMinTemperature) / temperatureDifference;
+    long double temperatureRelation = ((long double)surfaceTemperatureOverMinTemperature) / temperatureDifference;
 
     if(temperatureRelation < 0.1){
         spectralSubType = '9';

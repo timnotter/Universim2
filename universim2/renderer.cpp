@@ -7,6 +7,8 @@
 #include "renderer.hpp"
 #include "star.hpp"
 
+// TODO: For background, make array for every pixel and add up brightness
+
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate){
     // printf("Renderer constructor begin\n");
     this->myWindow = myWindow;
@@ -70,7 +72,7 @@ void Renderer::draw(){
     //     drawLine(WHITE_COL, i%windowWidth-1, (dataPoints[i-1]-370000000.0)/50000000*windowHeight, i%windowWidth, (dataPoints[i]-370000000.0)/50000000*windowHeight);
     // }
     // for(int i=0;i<dataPoints2.size();i++){
-    //     drawPoint(RED_COL, dataPoints2[i]/400000000.0*(windowHeight/2)+windowWidth/2, dataPoints3[i]/400000000.0*(windowHeight/2)+windowHeight/2);
+    //     drawPoint(RED_COL, dataPoints2[i]/100000000.0*(windowHeight/2)+windowWidth/2, dataPoints3[i]/100000000.0*(windowHeight/2)+windowHeight/2);
     // }
 
     // XClearWindow(myWindow->getDisplay(), *(myWindow->getWindow()));          // Not neccessary, probably because of the swap
@@ -92,25 +94,16 @@ void Renderer::drawObjects(){
 	// struct timespec currTime;
 	// clock_gettime(CLOCK_MONOTONIC, &prevTime);
 
-    int threadNumber = 1;
+    int threadNumber = 4;
     int amount = allObjects->size()/threadNumber;
-    // printf("Total objects: %ld\n", allObjects->size());
     std::vector<std::thread> threads;
     for(int i=0;i<threadNumber-1;i++){
-        // threads.push_back(std::thread (drawObjectMultiThread, i*amount, amount));
         threads.push_back(std::thread (staticDrawObjectMultiThread, i*amount, amount, this, i));
-        // printf("Started thread %d\n", i);
     }
-    // threads.push_back(std::thread (drawObjectMultiThread, (threadNumber-1)*amount, allObjects->size()-(threadNumber-1)*amount));
     threads.push_back(std::thread (staticDrawObjectMultiThread, (threadNumber-1)*amount, allObjects->size()-(threadNumber-1)*amount, this, threadNumber-1));
-    // printf("Started thread %d\n", threadNumber-1);
-    // printf("Started all threads\n");
     for(int i=0;i<threadNumber;i++){
         threads.at(i).join();
-        // printf("Joined thread %d\n", i);
     }
-    // printf("%ld objects on screen\n", objectsOnScreen.size());
-
 	// clock_gettime(CLOCK_MONOTONIC, &currTime);
     // printf("Calculating Image took: %ld mics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
 
@@ -167,7 +160,8 @@ void Renderer::drawUI(){
         drawString(BLACK_COL, 15, 40, toDisplay.c_str());                 // Displays current reference object
     }
     // Display date
-    drawString(BLACK_COL, windowWidth-75, 30, date->toString(true));
+    drawString(BLACK_COL, windowWidth-75, 25, date->toString(true));
+    drawString(BLACK_COL, windowWidth-60, 40, date->timeToString());
     // printf("%s\n", date->toString(false));
 
 }
@@ -268,12 +262,16 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     }
 
     // Calculate size in pixels on screen
-    double size = object->getRadius() / distance.getLength() * (windowWidth/2);
-    if(size < 1.0/10000000000){
+    long double size = object->getRadius() / distance.getLength() * (windowWidth/2);
+    // if(size < 1.0/10000000000){
+    //     // printf("Exited calculateObjectPosition\n");
+    //     return;
+    // }
+    double sizeCutOff = 1.0/1000000000000;
+    if(size < sizeCutOff){
         // printf("Exited calculateObjectPosition\n");
         return;
     }
-
     // Calculate position of center on screen
     int x;
     int y;
@@ -374,7 +372,6 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     }
     drawObject = new DrawObject(colour, x, y, size, distanceNewBasis.getLength(), CIRCLE);
     objectsToAddOnScreen->push_back(drawObject);
-    // addObjectOnScreen(drawObject);
     
     // Draw reference lines
     if(referenceObject == object && size>3)
@@ -512,7 +509,7 @@ void Renderer::calculateReferenceLinePositions(int x, int y, int size, StellarOb
 }
 
 
-void Renderer::rotateCamera(double angle, short axis){
+void Renderer::rotateCamera(long double angle, short axis){
     // The three vectors cameraDirection, cameraPlainVector1 and cameraPlainVector2 are an orthonormal basis. We therefore look at them as basisvectors for the rotation
     // Thus we can rotate them around more easily and in the end
 
@@ -640,21 +637,21 @@ bool Renderer::visibleOnScreen(int x, int y){
 void Renderer::increaseCameraMoveAmount(){
     cameraMoveAmount *= 1.5;
     if(cameraMoveAmount < astronomicalUnit/2)
-        printf("New cameraMoveAmount: %fm\n", cameraMoveAmount);
+        printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
     else if(cameraMoveAmount < lightyear/2)
-        printf("New cameraMoveAmount: %faU\n", cameraMoveAmount/astronomicalUnit);
+        printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
     else
-        printf("New cameraMoveAmount: %fly\n", cameraMoveAmount/lightyear);
+        printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
 }
 
 void Renderer::decreaseCameraMoveAmount(){
-    cameraMoveAmount = std::max(cameraMoveAmount / 1.5, 1.0);
+    cameraMoveAmount = std::max(cameraMoveAmount / 1.5, (long double) 1.0);
     if(cameraMoveAmount < astronomicalUnit/2)
-        printf("New cameraMoveAmount: %fm\n", cameraMoveAmount);
+        printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
     else if(cameraMoveAmount < lightyear/2)
-        printf("New cameraMoveAmount: %faU\n", cameraMoveAmount/astronomicalUnit);
+        printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
     else
-        printf("New cameraMoveAmount: %fly\n", cameraMoveAmount/lightyear);
+        printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
 }
 
 void Renderer::increaseSimulationSpeed(){
@@ -791,8 +788,8 @@ void Renderer::centreNearest(){
     PositionVector absolutCameraPosition = cameraPosition;
     if(referenceObject != NULL)
         absolutCameraPosition += referenceObject->getPosition();
-    double distance = (nearest->getPosition() - absolutCameraPosition).getLength();
-    double tempDistance;
+    long double distance = (nearest->getPosition() - absolutCameraPosition).getLength();
+    long double tempDistance;
     // printf("%s has distance %f\n", nearest->getName(), distance);
 
     for(StellarObject *galacticCore: *galaxies){

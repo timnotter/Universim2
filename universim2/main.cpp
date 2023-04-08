@@ -26,6 +26,8 @@ int main(int argc, char **argv){
 	std::vector<StellarObject*> galaxies = std::vector<StellarObject*>();
 	std::vector<StellarObject*> allObjects = std::vector<StellarObject*>();
 	std::mutex currentlyUpdatingOrDrawingLock;
+	std::mutex localUpdateIsReady;
+	std::mutex stellarUpdateIsReady;
 	const int optimalTimeDrawing = 1000000/20;									//In microseconds
 	int optimalTimeLocalUpdate = 1000000/10;									//In microseconds
 	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
@@ -36,15 +38,16 @@ int main(int argc, char **argv){
 	renderer.drawWaitingScreen();
 	printf("Waiting screen drawn\n");
 
-	initialiseStellarObjects(&galaxies, &allObjects);
-	printf("Initialised\n");
+	initialiseStellarObjects(&galaxies, &allObjects, &currentlyUpdatingOrDrawingLock);
+	// printf("Initialised\n");
 	renderer.initialiseReferenceObject();
 
 	struct timespec prevTime;
 	struct timespec currTime;
 	int updateTime;
 	// Start gravity calculations
-	std::thread *updater = new std::thread(localUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &isRunning, &isPaused, &date, &optimalTimeLocalUpdate, &renderer);
+	std::thread *localUpdater = new std::thread(localUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &allObjects, &isRunning, &isPaused, &date, &optimalTimeLocalUpdate, &renderer, &localUpdateIsReady, &stellarUpdateIsReady);
+	std::thread *stellarUpdater = new std::thread(stellarUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &isRunning, &renderer, &allObjects, &localUpdateIsReady, &stellarUpdateIsReady);
 	while(isRunning){
 		// Handle events
         clock_gettime(CLOCK_MONOTONIC, &prevTime);
@@ -77,15 +80,20 @@ int main(int argc, char **argv){
     }
 
 	return 0;
-}
+}	
 
-void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, bool *isRunning, bool *isPaused, Date *date, int *optimalTimeLocalUpdate, Renderer *renderer){
+void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, bool *isRunning, bool *isPaused, Date *date, int *optimalTimeLocalUpdate, Renderer *renderer, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady){
 	// Create vectors of all objects in the individual systems
 	std::vector<std::vector<StellarObject*>> starSystemsToUpdate;
+	std::vector<StellarObject*> loneStars;
 	// Go through all star systems, and if they are not lone stars, add a vector of all objects in the current star system to the starsystemToUpdate
+	
 	for(StellarObject *galacticCore: *galaxies){
 		for(StellarObject *starSystem: *(galacticCore->getChildren())){
-			if((static_cast<StarSystem*>(starSystem))->getLoneStar()) continue;
+			if((dynamic_cast<StarSystem*>(starSystem))->getLoneStar()) {
+				loneStars.push_back(starSystem);
+				continue;
+			}
 			starSystemsToUpdate.push_back(std::vector<StellarObject*>());
 
 			std::vector<StellarObject*> queue;
@@ -100,19 +108,42 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			}
 		}
 	}
-	// printf("Local update spit out %ld vectors\n", starSystemsToUpdate.size());
-
 	// Run the simulation with the appropriate speed
 	struct timespec prevTime;
 	struct timespec currTime;
 	// int optimalTime = 1000000/20;			//In microseconds
 	int updateTime;
+	int localUpdatesPerStellarUpdate = (TIMESTEP_STELLAR) / (TIMESTEP_LOCAL);
+	localUpdateIsReady->lock();
+	int counter;
 	while(*isRunning){
 		// printf("running\n");
 		if(*isPaused){
 			usleep(1000000/24);
 			continue;
 		}
+
+		if(localUpdatesPerStellarUpdate == 1){
+			for(StellarObject *stellarObject: *allObjects){
+				if(stellarObject->getType() == STARSYSTEM) {
+					// stellarObject->updateVelocity(TIMESTEP_LOCAL);
+					continue;
+				}
+				stellarObject->updateVelocity(TIMESTEP_LOCAL);
+				stellarObject->updatePosition(TIMESTEP_LOCAL);
+			}
+			localUpdateIsReady->unlock();
+			stellarUpdateIsReady->lock();
+			usleep(10);
+			// while(localUpdateIsReady->try_lock()) unlock;				// Make sure other thread gets the lock
+			localUpdateIsReady->lock();
+			stellarUpdateIsReady->unlock();
+			date->incYear(100);
+			// usleep(100);
+			continue;
+		}
+
+
 		// printf("Not Paused\n");
 		clock_gettime(CLOCK_MONOTONIC, &prevTime);
 		for(std::vector<StellarObject*> &objects: starSystemsToUpdate){
@@ -123,19 +154,82 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			tree.destroyTree();
 			// printf("Destroyed tree\n");
 		}
+		for(StellarObject *loneStar: loneStars){
+			loneStar->updateVelocity(TIMESTEP_LOCAL);
+			loneStar->updatePosition(TIMESTEP_LOCAL);
+		}
+		for(StellarObject *galacticCore: *galaxies){
+			// ------------------------------------------------ THIS IS SUBOPTIMAL!! REDO ------------------------------------------------
+			galacticCore->updateVelocity(TIMESTEP_LOCAL);
+			galacticCore->updatePosition(TIMESTEP_LOCAL);
+		}
 		date->incSecond(TIMESTEP_LOCAL);
 		// usleep(1000000);
 
+		if(++counter == localUpdatesPerStellarUpdate){
+			counter = 0;
+			localUpdateIsReady->unlock();
+			stellarUpdateIsReady->lock();
+			localUpdateIsReady->lock();
+			stellarUpdateIsReady->unlock();
+		}
 
 		clock_gettime(CLOCK_MONOTONIC, &currTime);
 		updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
 		// printf("Updating took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, *optimalTimeLocalUpdate, (*optimalTimeLocalUpdate-updateTime));
         // clock_gettime(CLOCK_MONOTONIC, &prevTime);
 		if((*optimalTimeLocalUpdate-updateTime) > 0) usleep(*optimalTimeLocalUpdate-updateTime);
+		// printf("Slept\n");
+
+
 	}	
 }
 
-void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects){	
+void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, bool *isRunning, Renderer *renderer, std::vector<StellarObject*> *allObjects, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady){
+	// Create vectors of all objects in the current galaxy					- Possibly add support for multiple galaxies with 
+	std::vector<std::vector<StellarObject*>> galaxiesToUpdate;
+	// Go through all galaxies and add starsystems to respective vector
+	for(StellarObject *galacticCore: *galaxies){
+		if(galacticCore->getChildren()->size()==0) continue;
+		galaxiesToUpdate.push_back(std::vector<StellarObject*>());
+		galaxiesToUpdate.back().push_back(galacticCore);
+		for(StellarObject *starSystem: *(galacticCore->getChildren())){
+			galaxiesToUpdate.back().push_back(starSystem);
+		}
+	}
+	// Store galacitc acceleration inside starsystems, which do not get updated otherwise, then poll them for the local update
+
+	// Run the simulation with the appropriate speed
+	struct timespec prevTime;
+	struct timespec currTime;
+	stellarUpdateIsReady->lock();
+	while(*isRunning){
+		// --------------------------------------------------------- TODO --------------------------------------------------------- Acceleration doesn't work
+		clock_gettime(CLOCK_MONOTONIC, &prevTime);
+		for(std::vector<StellarObject*> &galaxy: galaxiesToUpdate){
+			Tree tree(&galaxy, currentlyUpdatingOrDrawingLock);
+			tree.buildTree();
+			tree.update(TIMESTEP_STELLAR, renderer);
+			tree.destroyTree();
+		}
+		clock_gettime(CLOCK_MONOTONIC, &currTime);
+		int updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
+		// printf("Stellar force calculation took %d mics\n", updateTime);
+
+		// Wait until local updates have caught up, swap in new acceleration values
+		localUpdateIsReady->lock();
+		for(StellarObject *stellarObject: *allObjects){
+			stellarObject->updateNewStellarValues();
+		}
+		stellarUpdateIsReady->unlock();
+		localUpdateIsReady->unlock();
+		usleep(10);
+		stellarUpdateIsReady->lock();
+		// printf("Full update of future values has been done\n");
+	}
+}
+
+void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock){	
 	// Initialise all objects
 	galaxies->push_back(new GalacticCore("Sagittarius A*", 1, 1, 0, 0xFFFF00));
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 1.047)); 			// this inclinations is from the solar plan to the galactic plane, thus not of interest
@@ -143,12 +237,6 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
     // ADD_PLANET(new Planet("Mercury", 0.3829, 0.055, 0.387098, 0.205630, 7.005*PI/180));
     // ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180));
-
-	ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0, 0));
-	ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
-    ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
-    ADD_MOON(new Moon("Moon", 1, 1, 1, 0, 0));
-
 	// ADD_PLANET(new Planet("Earth", 1, 1, 1, 0.0167086, 0));
     // ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
     // ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180));
@@ -165,11 +253,33 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
     // ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180));
 	// ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
 
+	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0, 0));
+	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
+    // ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
+    // ADD_MOON(new Moon("Moon", 1, 1, 1, 0, 0));
+
+	ADD_STARSYSTEM(new StarSystem("Solar System", 0.01, 0, 0));
+	ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
+
 	// Add random stars - currently orbit is still fixed
-	for(int i=0;i<0;i++){
-		ADD_STARSYSTEM(new StarSystem());
-		// if(i%50000 == 0) printf("Created %d stars\n", i);
-	}
+	int totalStarsystems = 100;
+	int threadNumber;
+	int amount;
+    std::vector<std::thread> threads;
+	if (totalStarsystems == 0) goto skipInitialisation;
+	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
+	printf("ts: %d, tN: %d\n", totalStarsystems, threadNumber);
+    amount = totalStarsystems/threadNumber;
+	printf("huhu\n");
+    for(int i=0;i<threadNumber-1;i++){
+        threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock));
+    }
+    threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock));
+	for(int i=0;i<threadNumber;i++){
+        threads.at(i).join();
+    }
+	skipInitialisation:
+
 	for(StellarObject *galacticCore: *galaxies){
         for(StellarObject *starSystem: *(galacticCore->getChildren())){
             for(StellarObject *star: *(starSystem->getChildren())){
@@ -195,4 +305,20 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// printf("Distance of moon and earth: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
 	// printf("Distance of moon and CoM earthsystem: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getCentreOfMass() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
 	// printf("Placed all stellar objects\n");
+}
+void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock){
+	// globalGalaxies is called like that, because then we can use the name "galaxies" and don't have to change the define
+	std::vector<StellarObject*> *galaxies = new std::vector<StellarObject*>();
+	galaxies->push_back(new GalacticCore("", 0, 0, 0));
+	for(int i=0;i<amount;i++){
+		ADD_STARSYSTEM(new StarSystem(1));
+	}
+
+	// We reuse the currentlyUpdatingOrDrawingLock
+	currentlyUpdatingOrDrawingLock->lock();
+	for(StellarObject *stellarObject: *(galaxies->at(0)->getChildren())){
+		globalGalaxies->at(0)->addChild(stellarObject);
+	}
+	currentlyUpdatingOrDrawingLock->unlock();
+	delete galaxies;
 }

@@ -6,8 +6,8 @@
 
 class Comet : public StellarObject{
 public:
-    Comet(const char *name, double radius, double mass, double meanDistance, double eccentricity, double inclination);
-    Comet(const char *name, double radius, double mass, double meanDistance, double eccentricity, double inclination, int colour);
+    Comet(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination);
+    Comet(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int colour);
 };
 
 #endif

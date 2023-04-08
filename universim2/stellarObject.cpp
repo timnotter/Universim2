@@ -7,7 +7,7 @@
 #include "constants.hpp"
 #include "tree.hpp"
 
-StellarObject::StellarObject(const char *name, int type, double radius, double mass, double meanDistance, double eccentricity, double inclination){
+StellarObject::StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination){
     // this->name = name;
     this->name = new std::string(name);
     this->type = type;
@@ -16,6 +16,8 @@ StellarObject::StellarObject(const char *name, int type, double radius, double m
     this->meanDistance = meanDistance;
     this->eccentricity = eccentricity;
     this->inclination = inclination;
+
+    oldStellarAcceleration = PositionVector();
 
     // Correct all units in relation to respective reference units
     switch(type){
@@ -54,7 +56,7 @@ StellarObject::StellarObject(const char *name, int type, double radius, double m
     }
 }
 
-StellarObject::StellarObject(const char *name, int type, double radius, double mass, double meanDistance, double eccentricity, double inclination, int colour) : StellarObject(name, type, radius, mass, meanDistance, eccentricity, inclination){
+StellarObject::StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int colour) : StellarObject(name, type, radius, mass, meanDistance, eccentricity, inclination){
     this->colour = colour;
 }
 
@@ -75,15 +77,15 @@ void StellarObject::place(){
     
     // To start, we consider a central plane on which all orbits lay, when eccentricity is 0, namely the plane z = 0
 
-    double apoapsis;
-    double periapsis;
-    double distance;
-    double semiMajorAxis;
-    double trueAnomaly;
-    double argumentOfPeriapsis;
-    double longitudeOfAscendingNode;
-    double eccentricAnomaly;
-    double meanAnomaly;
+    long double apoapsis;
+    long double periapsis;
+    long double distance;
+    long double semiMajorAxis;
+    long double trueAnomaly;
+    long double argumentOfPeriapsis;
+    long double longitudeOfAscendingNode;
+    long double eccentricAnomaly;
+    long double meanAnomaly;
 
     // If object is galactic core, place it anywhere with distance to (0/0/0) = meanDistance
     // printf("Trying to place %s\n", name);
@@ -107,10 +109,9 @@ void StellarObject::place(){
         semiMajorAxis = meanDistance / (1 - std::pow(eccentricity, 2));
 
         // We generate random angles for true anomaly, argument of periapsis and longitude of ascending node
-        trueAnomaly = (double)rand() / RAND_MAX * (2*PI);
-        argumentOfPeriapsis = (double)rand() / RAND_MAX * (2*PI);
-        longitudeOfAscendingNode = (double)rand() / RAND_MAX * (2*PI);
-        // printf("Generated random values for %s\n", name);
+        trueAnomaly = (long double)rand() / RAND_MAX * (2*PI);
+        argumentOfPeriapsis = (long double)rand() / RAND_MAX * (2*PI);
+        longitudeOfAscendingNode = (long double)rand() / RAND_MAX * (2*PI);
 
         // Calculation of eccentric anomaly
         eccentricAnomaly = 2 * std::atan(std::sqrt((1 - eccentricity)/(1 + eccentricity)) * std::tan(trueAnomaly / 2));
@@ -121,15 +122,11 @@ void StellarObject::place(){
         // Initialise position with position of parent
         centreOfMass = parent->getCentreOfMass();
 
-        // printf("Starting to place %s\n", name);
-
         // Calculate position from values
-        double factor = semiMajorAxis * (1 - std::pow(eccentricity, 2)) / (1 + eccentricity * std::cos(trueAnomaly));
+        long double factor = semiMajorAxis * (1 - std::pow(eccentricity, 2)) / (1 + eccentricity * std::cos(trueAnomaly));
         centreOfMass.setX(centreOfMass.getX() + factor * (std::cos(trueAnomaly + argumentOfPeriapsis) * std::cos(longitudeOfAscendingNode) - std::sin(trueAnomaly + argumentOfPeriapsis) * std::sin(longitudeOfAscendingNode) * std::cos(inclination)));
         centreOfMass.setY(centreOfMass.getY() + factor * (std::cos(trueAnomaly + argumentOfPeriapsis) * std::sin(longitudeOfAscendingNode) + std::sin(trueAnomaly + argumentOfPeriapsis) * std::cos(longitudeOfAscendingNode) * std::cos(inclination)));
         centreOfMass.setZ(centreOfMass.getZ() + factor * (std::sin(trueAnomaly + argumentOfPeriapsis) * std::sin(inclination)));
-        // printf("Placed center of mass of %s at %f, %f, %f\n", name, centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ());
-
 
         // -------------------------------------------------------------------------- TODO --------------------------------------------------------------------------
         // Compute speed around centre of mass of system after children are placed
@@ -137,8 +134,8 @@ void StellarObject::place(){
         // Speed should then be: 
         // v = sqrt(mu / p) * [-sin(v + w) * cos(O) - cos(v + w) * sin(O) * cos(i), -sin(v + w) * sin(O) + cos(v + w) * cos(O) * cos(i), cos(v + w) * sin(i)]
         if(semiMajorAxis!=0){
-            double mu = G * parent->getMass();
-            double p = semiMajorAxis * (1 - std::pow(eccentricity, 2));
+            long double mu = G * parent->getMass();
+            long double p = semiMajorAxis * (1 - std::pow(eccentricity, 2));
 
             velocity.setX(std::sqrt(mu / p) * (-1 * std::sin(trueAnomaly + argumentOfPeriapsis) * std::cos(longitudeOfAscendingNode) - std::cos(trueAnomaly + argumentOfPeriapsis) * std::sin(longitudeOfAscendingNode) * std::cos(inclination)));
             velocity.setY(std::sqrt(mu / p) * (-1 * std::sin(trueAnomaly + argumentOfPeriapsis) * std::sin(longitudeOfAscendingNode) + std::cos(trueAnomaly + argumentOfPeriapsis) * std::cos(longitudeOfAscendingNode) * std::cos(inclination)));
@@ -150,15 +147,17 @@ void StellarObject::place(){
         // -------------------------------------------------------------------------- TODO --------------------------------------------------------------------
         // Go through all children and place their center of mass, calculate the center of mass of children
         PositionVector tempCentreOfMass = PositionVector();
-        double childrenTotalMass = 0;
+        PositionVector childrenMomentum = PositionVector();
+        long double childrenTotalMass = 0;
         // printf("Trying to place children of %s\n", name);
         for(StellarObject *child: children){
             child->place();
             child->calculateTotalMass();
-            double childTotalMass = child->getTotalMass();
+            long double childTotalMass = child->getTotalMass();
             // printf("Total mass of system %s is %f\n", child->getName(), child->getTotalMass());
             calculateCentreOfMass();
             tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
+            childrenMomentum += (child->getVelocity()-velocity) * childTotalMass;
             childrenTotalMass += childTotalMass;
         }
         if(childrenTotalMass!=0)
@@ -175,37 +174,91 @@ void StellarObject::place(){
             position.setY((centreOfMass.getY() * totalMass - tempCentreOfMass.getY() * childrenTotalMass) / mass);
             position.setZ((centreOfMass.getZ() * totalMass - tempCentreOfMass.getZ() * childrenTotalMass) / mass);
         }
-        // printf("Object: %s, childrenTotalMass: %f, mass: %f\n", name, childrenTotalMass, mass);
-        // printf("Placed %s at %f, %f, %f\n", name, position.getX(), position.getY(), position.getZ());
 
+        // Finally we can adjust the velocity, such that the body orbits around the centre of mass of the system - Not sure if this is in fact correct
+        // PositionVector before = velocity;
+        if(children.size()!=0 && type!=STARSYSTEM){
+            velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
+            // printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
+        }
+        setOldPosition(position);
+        setOldVelocity(velocity);
+        setFuturePosition(position);
+        if(type == STARSYSTEM){
+            mass = totalMass;
+        }
     }
 }
 
-void StellarObject::initialiseVelocity(){
-    // ------------------------------------TODO-----------------------------------------------------
-    // Initialise velocity with correct orbit in mind
-    if(type == 0){
-        position = PositionVector();
-    }
-}
-
-void StellarObject::updatePosition(double deltaT){
-    // printf("%s - move amount: (%f, %f, %f)\n", getName(), (velocity * deltaT).getX(), (velocity * deltaT).getY(), (velocity * deltaT).getZ());
+void StellarObject::updatePosition(long double deltaT){
+    // std::string *nameComparison = new std::string("Sun");
+    // std::string *nameComparison2 = new std::string("Sagittarius A*");
+    // if(strcmp(getName(), nameComparison->c_str()) == 0 || strcmp(getName(), nameComparison2->c_str()) == 0){
+    // printf("%s - old position: (%s), ", getName(), position.toString());
+    // }
     position += velocity * deltaT;
+    // std::string *nameComparison = new std::string("Sun");
+    // if(strcmp(getName(), nameComparison->c_str()) == 0){
+    //     printf("%s - Updated position with old position (?) and velocity (%s) to new position (%s)\n", getName(), velocity.toString(), position.toString());
+    // }
+    // delete nameComparison;
 }
 
-void StellarObject::updateVelocity(double deltaT){
+void StellarObject::updateVelocity(long double deltaT){
     velocity += (stellarAcceleration + localAcceleration) * deltaT;
+    // std::string *nameComparison = new std::string("Sun");
+    // std::string *nameComparison2 = new std::string("Sagittarius A*");
+    // if(strcmp(getName(), nameComparison->c_str()) == 0 || strcmp(getName(), nameComparison2->c_str()) == 0){
+    //     printf("%s - stellarAcceleration: (%s), localAcceleration: (%s), new velocity: (%s)\n", getName(), stellarAcceleration.toString(), localAcceleration.toString(), velocity.toString());
+    // }
+    // delete nameComparison;
+}
+
+void StellarObject::updateFuturePosition(long double deltaT){
+    futurePosition = oldPosition + futureVelocity * deltaT;
+    // std::string *nameComparison = new std::string("Solar System");
+    // if(strcmp(getName(), nameComparison->c_str()) == 0){
+    //     printf("%s - Updated future position with old position (%s) and velocity (%s) to new position (%s)\n", getName(), oldPosition.toString(), futureVelocity.toString(), futurePosition.toString());
+    // }
+    // delete nameComparison;
+}
+
+void StellarObject::updateFutureVelocity(long double deltaT){
+    futureVelocity = oldVelocity + futureStellarAcceleration * deltaT; 
 }
 
 void StellarObject::updateStellarAcceleration(Tree *tree){
-    // ------------------------------------TODO-----------------------------------------------------
     // Calculate acceleration from star(-system) to other star(-system)s. If type is not starsystem, reuse acceleration from motherstar
+    futureStellarAcceleration = tree->getRoot()->calculateAcceleration(this);
 }
 
 void StellarObject::updateLocalAcceleration(Tree *tree){
     // Calculate acceleration from local stellar objects - within system or nearby
     localAcceleration = tree->getRoot()->calculateAcceleration(this);
+}
+
+void StellarObject::updateNewStellarValues(){
+    // ------------------------------------------------------------------ TODO ------------------------------------------------------------------ Values don't coincide
+    // Old position is only relevant for starsystems and galactic cores, where this makes sense
+    oldPosition = getUpdatedCentreOfMass();
+    oldVelocity = velocity;
+    // std::string *nameComparison = new std::string("Solar System");
+    // if(strcmp(getName(), nameComparison->c_str()) == 0){
+    //     printf("%s - Approx pos: (%s), actual pos: (%s), difference: (%s)\n \t approx velocity: (%s), actual velocity: (%s), difference: (%s)\n", 
+    //     getName(), oldPosition.toString(), futurePosition.toString(), (oldPosition-futurePosition).toString(), 
+    //     velocity.toString(), futureVelocity.toString(), (velocity-futureVelocity).toString());
+    // }
+    // delete nameComparison;
+    oldStellarAcceleration = futureStellarAcceleration;
+    if(type == GALACTIC_CORE){
+        stellarAcceleration = oldStellarAcceleration;
+    }
+    else{
+        stellarAcceleration = homeSystem->getOldStellarAcceleration();
+    }
+    // if(type == STARSYSTEM){
+    //     oldPosition = getUpdatedCentreOfMass();
+    // }
 }
 
 void StellarObject::addChild(StellarObject *child){
@@ -216,6 +269,7 @@ void StellarObject::addChild(StellarObject *child){
     // printf("Between ifs\n");
     if(((type == STARSYSTEM) && children.size()>1) || ((type != GALACTIC_CORE) && (type != STARSYSTEM))) {
         // printf("Setting loneStar of %s to false\n", (static_cast<StellarObject*>(homeSystem))->getName());
+        // printf("Set LoneStar = false for %s\n", homeSystem->getName());
         homeSystem->setLoneStar(false);
     }
 
@@ -230,22 +284,25 @@ void StellarObject::calculateTotalMass(){
         totalMass += child->getTotalMass();
     }
     totalMass += mass;
+    if(type == STARSYSTEM) mass = totalMass;
 }
 
 void StellarObject::calculateCentreOfMass(){
     // ------------------------------------------------------------------------ TODO ------------------------------------------------------------------------ correct?
     // Calculate centre of mass of current system
     PositionVector tempCentreOfMass = PositionVector();
-    double totalMass = 0;
+    long double totalMass = 0;
     for(StellarObject *child: children){
         child->calculateTotalMass();
-        double childTotalMass = child->getTotalMass();
+        long double childTotalMass = child->getTotalMass();
         child->calculateCentreOfMass();
         tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
         totalMass += childTotalMass;
     }
-    tempCentreOfMass += position * mass;
-    totalMass += mass;
+    if(type != STARSYSTEM){
+        tempCentreOfMass += position * mass;
+        totalMass += mass;
+    }
     tempCentreOfMass /= totalMass;
 
     // --------------------------------------------------------------------------- DAFUQ ---------------------------------------------------------------------------
@@ -264,23 +321,23 @@ void StellarObject::setParent(StellarObject *parent){
     // printf("Parent of %s is now %s\n", name, parent->getName());
 }
 
-void StellarObject::setMass(double mass){
+void StellarObject::setMass(long double mass){
     this->mass = mass;
 }
 
-void StellarObject::setRadius(double radius){
+void StellarObject::setRadius(long double radius){
     this->radius = radius;
 }
 
-void StellarObject::setMeanDistance(double meanDistance){
+void StellarObject::setMeanDistance(long double meanDistance){
     this->meanDistance = meanDistance;
 }
 
-void StellarObject::setInclination(double inclination){
+void StellarObject::setInclination(long double inclination){
     this->inclination = inclination;
 }
 
-void StellarObject::setEccentricity(double eccentricity){
+void StellarObject::setEccentricity(long double eccentricity){
     this->eccentricity = eccentricity;
 }
 
@@ -305,15 +362,43 @@ void StellarObject::setLocalAcceleration(PositionVector localAcceleration){
     this->localAcceleration = localAcceleration;
 }
 
-double StellarObject::getX(){
+void StellarObject::setStellarAcceleration(PositionVector stellarAcceleration){
+    this->stellarAcceleration = stellarAcceleration;
+}
+
+void StellarObject::setFutureStellarAcceleration(PositionVector futureStellarAcceleration){
+    this->futureStellarAcceleration = futureStellarAcceleration;
+}
+
+void StellarObject::setFutureVelocity(PositionVector futureVelocity){
+    this->futureVelocity = futureVelocity;
+}
+
+void StellarObject::setFuturePosition(PositionVector futurePosition){
+    this->futurePosition = futurePosition;
+}
+
+void StellarObject::setOldStellarAcceleration(PositionVector oldStellarAcceleration){
+    this->oldStellarAcceleration = oldStellarAcceleration;
+}
+
+void StellarObject::setOldVelocity(PositionVector oldVelocity){
+    this->oldVelocity = oldVelocity;
+}
+
+void StellarObject::setOldPosition(PositionVector oldPosition){
+    this->oldPosition = oldPosition;
+}
+
+long double StellarObject::getX(){
     return position.getX();
 }
 
-double StellarObject::getY(){
+long double StellarObject::getY(){
     return position.getY();
 }
 
-double StellarObject::getZ(){
+long double StellarObject::getZ(){
     return position.getZ();
 }
 
@@ -338,23 +423,23 @@ PositionVector StellarObject::getUpdatedCentreOfMass(){
     return centreOfMass;
 }
 
-double StellarObject::getRadius(){
+long double StellarObject::getRadius(){
     return radius;
 }
 
-double StellarObject::getMass(){
+long double StellarObject::getMass(){
     return mass;
 }
 
-double StellarObject::getTotalMass(){
+long double StellarObject::getTotalMass(){
     return totalMass;
 }
 
-double StellarObject::getEccentricity(){
+long double StellarObject::getEccentricity(){
     return eccentricity;
 }
 
-double StellarObject::getMeanDistance(){
+long double StellarObject::getMeanDistance(){
     return meanDistance;
 }
 
@@ -382,6 +467,30 @@ StarSystem *StellarObject::getHomeSystem(){
     return homeSystem;
 }
 
+PositionVector StellarObject::getFutureStellarAcceleration(){
+    return futureStellarAcceleration;
+}
+
+PositionVector StellarObject::getFutureVelocity(){
+    return futureVelocity;
+}
+
+PositionVector StellarObject::getFuturePosition(){
+    return futurePosition;
+}
+
+PositionVector StellarObject::getOldStellarAcceleration(){
+    return oldStellarAcceleration;
+}
+
+PositionVector StellarObject::getOldVelocity(){
+    return oldVelocity;
+}
+
+PositionVector StellarObject::getOldPosition(){
+    return oldPosition;
+}
+
 void StellarObject::freeObject(){
     for(StellarObject *child: children){
         child->freeObject();
@@ -393,7 +502,7 @@ void StellarObject::freeObject(){
 }
 
 void StellarObject::updateCentreOfMass(){
-    double totalMass = mass;
+    long double totalMass = mass;
     PositionVector adjustedCoM = position * mass;
     for(StellarObject *child: children){
         totalMass += child->getTotalMass();

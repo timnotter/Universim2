@@ -5,16 +5,20 @@
 #include "positionVector.hpp"
 #include "matrix3d.hpp"
 
-#define MAX_ANGLE 0.1       // Theta = maximum angle, such that node is used for gravitational computation
+#define MAX_ANGLE 0.5       // Theta = maximum angle, such that node is used for gravitational computation
 // #define EPSILON 0.0001      // Gravitational Softening
 #define EPSILON 0.0000000000001      // Gravitational Softening
+
+
+#define STELLAR_TREE true
+#define LOCAL_TREE false
 
 class StellarObject;
 class Tree;
 
 class TreeCodeNode{
 private:
-    double mass;
+    long double mass;
     // Position of center of mass
     PositionVector centreOfMass;
     // Quadropole
@@ -24,14 +28,10 @@ private:
     // Vector of all 8 corners
     std::vector<PositionVector> corners;
     // Size of node box
-    double length;
-    double width;
-    double height;
-    // Indices of particles inside node, initialisation works by inputing a vector of Particles and read the indices from them
-    std::vector<int> indices;
-    // All particles that exist - probably not needed
-    // // std::vector<StellarObject*> *objectsInTree;
-    // ALl particles in current node
+    long double length;
+    long double width;
+    long double height;
+    // All objects in current node
     std::vector<StellarObject*> objectsInNode;
     // Subnodes
     std::vector<TreeCodeNode*> subNodes;
@@ -39,16 +39,12 @@ private:
     bool leaf;
     // Node id - currently not used
     int id;
+    // Determines the type of the tree the node is part of
+    bool type;
 
-    // ----------------------------------------------------- TODO -----------------------------------------------------
-    // Adjust these functions 
 public:
-    // TreeCodeNode(double x, double y, double z, double length, double width, double height);
     TreeCodeNode(std::vector<StellarObject*> *objectsInNode);
 
-
-    // void initialiseNode(std::vector<Particle> *particles, std::vector<Particle> *indices, double x, double y, double z, double length, double width, double height);
-    // void initialiseNode(std::vector<Particle> *particles, double x, double y, double z, double length, double width, double height);
     void createSubNodes();
     // Calculate all needed values
     void calculateNodeValues();
@@ -59,11 +55,17 @@ public:
     // ID currently not used
     int getID();
     PositionVector calculateAcceleration(StellarObject *stellarObject);
-    double calculateAngle(StellarObject *stellarObject);
+    PositionVector calculateStellarAcceleration(StellarObject *stellarObject);
+    long double calculateAngle(StellarObject *stellarObject);
     void updateCorners();
     // For debugging purposes
     int countNodes();
     PositionVector getCentreOfMassPosition();
+
+    PositionVector getRelevantPositionOfTreetype(StellarObject *stellarObject);
+    long double getRelevantXOfTreetype(StellarObject *stellarObject);
+    long double getRelevantYOfTreetype(StellarObject *stellarObject);
+    long double getRelevantZOfTreetype(StellarObject *stellarObject);
 };
 
 #endif

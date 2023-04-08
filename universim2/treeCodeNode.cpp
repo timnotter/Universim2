@@ -5,7 +5,7 @@
 #include "tree.hpp"
 #include "constants.hpp"
 
-// TreeCodeNode::TreeCodeNode(double x, double y, double z, double length, double width, double height){
+// TreeCodeNode::TreeCodeNode(long double x, long double y, long double z, long double length, long double width, long double height){
 //     minCornerPosition = PositionVector(x, y, z);
 //     this->length = length;
 //     this->width = width;
@@ -16,15 +16,21 @@
 TreeCodeNode::TreeCodeNode(std::vector<StellarObject*> *objectsInNode){
     minCornerPosition = PositionVector();
     leaf = false;
+    type = LOCAL_TREE;
+    if(objectsInNode->size() !=0 && (objectsInNode->at(0)->getType() == GALACTIC_CORE || objectsInNode->at(0)->getType() == STARSYSTEM)) type = STELLAR_TREE;
     for(StellarObject *stellarObject: *objectsInNode){
         this->objectsInNode.push_back(stellarObject);
     }
+    // printf("Trying to calculate node value with node of size %lu\n", objectsInNode->size());
     calculateNodeValues();
+    // printf("Size: %lu, length: %Lf\n", objectsInNode->size(), length);
     createSubNodes();
     // printf("Created node with %lu objects, position (%f, %f, %f), size (%f, %f, %f) and mass %f\n", objectsInNode->size(), centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ(), length, width, height, mass);
 }
 
 void TreeCodeNode::createSubNodes(){
+    // printf("Create subnode with size: %lu and size (%Lf, %Lf, %Lf)\n", objectsInNode.size(), length, width, height);
+    // usleep(100000);
     if(objectsInNode.size()==1) {
         leaf = true;
         return;
@@ -38,9 +44,12 @@ void TreeCodeNode::createSubNodes(){
 
     // Go through all objects and add them to corresponding subnode vector
     for(StellarObject *stellarObject: objectsInNode){
-        bool xCondition = stellarObject->getX() < minCornerPosition.getX()+length/2;
-        bool yCondition = stellarObject->getY() < minCornerPosition.getY()+width/2;
-        bool zCondition = stellarObject->getZ() < minCornerPosition.getZ()+height/2;
+        // bool xCondition = stellarObject->getX() < minCornerPosition.getX()+length/2;
+        // bool yCondition = stellarObject->getY() < minCornerPosition.getY()+width/2;
+        // bool zCondition = stellarObject->getZ() < minCornerPosition.getZ()+height/2;
+        bool xCondition = getRelevantXOfTreetype(stellarObject) < minCornerPosition.getX()+length/2;
+        bool yCondition = getRelevantYOfTreetype(stellarObject) < minCornerPosition.getY()+width/2;
+        bool zCondition = getRelevantZOfTreetype(stellarObject) < minCornerPosition.getZ()+height/2;
 
         if(xCondition){
             if(yCondition){
@@ -72,26 +81,27 @@ void TreeCodeNode::createSubNodes(){
     }
 }
 
-void TreeCodeNode::calculateNodeValues(){
+void TreeCodeNode::calculateNodeValues(){       // Centre of mass position seems to be quite wrong!!
+    // printf("Calculating node values for node of size %lu\n", objectsInNode.size());
     if(objectsInNode.size() == 1){
         calculateLeafValues();
         return;
     }
-
-    double minX = DOUBLE_MAX_VALUE;
-    double minY = DOUBLE_MAX_VALUE;
-    double minZ = DOUBLE_MAX_VALUE;
-    double maxX = DOUBLE_MIN_VALUE;
-    double maxY = DOUBLE_MIN_VALUE;
-    double maxZ = DOUBLE_MIN_VALUE;
-    double tempMass;
-    double tempX;
-    double tempY;
-    double tempZ;
+    mass = 0;
+    long double minX = LONG_DOUBLE_MAX_VALUE;
+    long double minY = LONG_DOUBLE_MAX_VALUE;
+    long double minZ = LONG_DOUBLE_MAX_VALUE;
+    long double maxX = LONG_DOUBLE_MIN_VALUE;
+    long double maxY = LONG_DOUBLE_MIN_VALUE;
+    long double maxZ = LONG_DOUBLE_MIN_VALUE;
+    long double tempMass;
+    long double tempX;
+    long double tempY;
+    long double tempZ;
     for(StellarObject *stellarObject: objectsInNode){
-        tempX = stellarObject->getX();
-        tempY = stellarObject->getY();
-        tempZ = stellarObject->getZ();
+        tempX = getRelevantXOfTreetype(stellarObject);
+        tempY = getRelevantYOfTreetype(stellarObject);
+        tempZ = getRelevantZOfTreetype(stellarObject);
         tempMass = stellarObject->getMass();
         // Update total mass of node
         mass += tempMass;
@@ -102,23 +112,19 @@ void TreeCodeNode::calculateNodeValues(){
         maxX = std::max(maxX, tempX);
         maxY = std::max(maxY, tempY);
         maxZ = std::max(maxZ, tempZ);
+        // printf("ObjectX: %Lf, minX: %Lf, maxX: %Lf\n", tempX, minX, maxX);
         // Update center of mass
         centreOfMass += PositionVector(tempX, tempY, tempZ) * tempMass;
     }
+    // printf("MinX: %Lf, MaxX: %Lf, objectsInNode.size(): %lu\n", minX, maxX, objectsInNode.size());
+    // printf("Preadjusted centreOfMass (%s) and totalMass = %Lf\n", centreOfMass.toString(), mass);
     centreOfMass /= mass;
-    // if(id%1000==0){
-    // printf("Node %d has %lu nodes, position (%f, %f, %f) and center of mass (%f, %f, %f)\n", id, indices.size(), x, y, z, centerOfMassX, centerOfMassY, centerOfMassZ);
-    // printf("Particles have positions: ");
-    // for(int index: indices){
-    //     printf("(%f, %f, %f), ", particles->at(index).getX(), particles->at(index).getY(), particles->at(index).getZ());
-    // }
-    // printf("\n");
-    // }
+    // printf("Adjusted centreOfMass to final value of (%s)\n", centreOfMass.toString());
 
     for(StellarObject *stellarObject: objectsInNode){
-        tempX = centreOfMass.getX() - stellarObject->getX();
-        tempY = centreOfMass.getY() - stellarObject->getY();
-        tempZ = centreOfMass.getZ() - stellarObject->getZ();
+        tempX = centreOfMass.getX() - getRelevantXOfTreetype(stellarObject);
+        tempY = centreOfMass.getY() - getRelevantYOfTreetype(stellarObject);
+        tempZ = centreOfMass.getZ() - getRelevantZOfTreetype(stellarObject);
         tempMass = stellarObject->getMass();
         // Calculate quadropole
         quadropole.setEntry(0, 0, quadropole.getEntry(0, 0) + tempMass * (3*(tempX)*(tempX)-(std::pow(tempX, 2)+std::pow(tempY, 2)+std::pow(tempZ, 2))));
@@ -130,9 +136,7 @@ void TreeCodeNode::calculateNodeValues(){
         quadropole.setEntry(2, 0, quadropole.getEntry(2, 0) + tempMass * (3*(tempZ)*(tempX)));
         quadropole.setEntry(2, 1, quadropole.getEntry(2, 1) + tempMass * (3*(tempZ)*(tempY)));
         quadropole.setEntry(2, 2, quadropole.getEntry(2, 2) + tempMass * (3*(tempZ)*(tempZ)-(std::pow(tempX, 2)+std::pow(tempY, 2)+std::pow(tempZ, 2))));
-    }
-    // printf("Quadropole:\n%f %f %f\n%f %f %f\n %f %f %f\n", q00, q01, q02, q10, q11, q12, q20, q21, q22);
-    
+    }    
 
     // Adjust box around particles
     minCornerPosition.setX(minX);
@@ -143,7 +147,7 @@ void TreeCodeNode::calculateNodeValues(){
     height = maxZ - minZ;
 
     updateCorners();
-    // printf("Adjusted min-/maxValues for node %d are: (%f, %f, %f), (%f, %f, %f)\n", id, minX, minY, minZ, maxX, maxY, maxZ);
+    // printf("Centre of mass of node: %s\n", centreOfMass.toString());
 }
 
 void TreeCodeNode::calculateLeafValues(){
@@ -174,18 +178,19 @@ int TreeCodeNode::getID(){
 
 PositionVector TreeCodeNode::calculateAcceleration(StellarObject *stellarObject){                   // TODO
     PositionVector acceleration(0.0, 0.0, 0.0);
+    // printf("Calculating acceleration for %s with node with position (%s)\n", stellarObject->getName(), centreOfMass.toString());
     // printf("G = x?: %d\n", G == 6.67430 * pow(10, -11));
 
     // If node is leaf, calculate directly
     if(isLeaf()){
         // printf("Node is leaf\n");
         // If the two particles are at exactly the same spot, we set the force between them to 0    // TODO - crash together
-        double distance = (centreOfMass - stellarObject->getPosition()).getLength();
+        long double distance = (centreOfMass - getRelevantPositionOfTreetype(stellarObject)).getLength();
         if(distance!=0){
             // Possible small improvement: multiply with G in the end and not in here already
             // ---------------------------------------------------------------- MAYBE? ----------------------------------------------------------------
             // Multiply with -1?
-            acceleration = (centreOfMass - stellarObject->getPosition()) * (G * mass / std::pow(std::sqrt((std::pow(distance, 2) + std::pow(EPSILON, 2))), 3));
+            acceleration = (centreOfMass - getRelevantPositionOfTreetype(stellarObject)) * (G * mass / std::pow(std::sqrt((std::pow(distance, 2) + std::pow(EPSILON, 2))), 3));
             // acceleration = (centreOfMass - stellarObject->getPosition()).normalise() * (G * mass / std::pow(distance, 2));
             // printf("(centreOfMass - stellarObject->getPosition()): (%f, %f, %f)\n", (centreOfMass - stellarObject->getPosition()).getX(), (centreOfMass - stellarObject->getPosition()).getY(), (centreOfMass - stellarObject->getPosition()).getZ());
             // printf("Acceleration: (%.10f, %.10f, %.10f)\n", acceleration.getX(), acceleration.getY(), acceleration.getZ());
@@ -195,11 +200,12 @@ PositionVector TreeCodeNode::calculateAcceleration(StellarObject *stellarObject)
         // printf("StellarObject %s with position (%f, %f, %f) is influenced by leaf node with CoM position (%f, %f, %f) and distance %f\n", stellarObject->getName(), 
         // stellarObject->getX(), stellarObject->getY(), stellarObject->getZ(), centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ(), distance);
         // printf("Direct calculation: (%f, %f, %f)\n", acceleration.getX(), acceleration.getY(), acceleration.getZ());
+        // printf("Leaf acceleration of %s: (%s)\n", stellarObject->getName(), acceleration.toString());
         return acceleration;
     }
 
     // If angle is larger than MAX_ANGLE, let the children calculate the acceleration and add it up
-    double angle = calculateAngle(stellarObject);
+    long double angle = calculateAngle(stellarObject);
     if(angle > MAX_ANGLE){
         for(TreeCodeNode *child: subNodes){
             acceleration += child->calculateAcceleration(stellarObject);
@@ -209,18 +215,18 @@ PositionVector TreeCodeNode::calculateAcceleration(StellarObject *stellarObject)
 
     // If angle is small enough but node is no leaf, use multipole expansion to calculate the acceleration. As origin we take (0/0/0)
     // In the formula, position of object is r, and centreOfMass of node is s, so we are going to use that notation 
-    PositionVector r = stellarObject->getPosition();
+    PositionVector r = getRelevantPositionOfTreetype(stellarObject);
     PositionVector s = centreOfMass;
     PositionVector rS(0, 0, 0);     // Difference between the two
     rS = r - s;
 
     // Calculation according to paper
     PositionVector directionVector = rS.normalise();
-    double rQr = directionVector.rQr(quadropole);
+    long double rQr = directionVector.rQr(quadropole);
     PositionVector Qr = directionVector.Qr(quadropole);
-    double distance = rS.getLength();
-    double MR2 = -mass/(std::pow(distance, 2));
-    double distancePneg4 = 1/std::pow(distance, 4);
+    long double distance = rS.getLength();
+    long double MR2 = -mass/(std::pow(distance, 2));
+    long double distancePneg4 = 1/std::pow(distance, 4);
 
     // Monopole
     acceleration = directionVector * MR2;
@@ -232,8 +238,8 @@ PositionVector TreeCodeNode::calculateAcceleration(StellarObject *stellarObject)
     // For reference calculations
     // if(0==0){
     //     PositionVector dSumAcc(0, 0, 0);
-    //     double localAcceleration = 0;
-    //     double distance = (getCentreOfMassPosition()-stellarObject->getPosition()).getLength();
+    //     long double localAcceleration = 0;
+    //     long double distance = (getCentreOfMassPosition()-stellarObject->getPosition()).getLength();
     //     if(distance!=0){
     //         dSumAcc = (centreOfMass - stellarObject->getPosition()) * (G *  mass / std::pow(std::sqrt((std::pow(distance, 2) + std::pow(EPSILON, 2))), 3));
     //     }
@@ -241,23 +247,25 @@ PositionVector TreeCodeNode::calculateAcceleration(StellarObject *stellarObject)
     //     stellarObject->getX(), stellarObject->getY(), stellarObject->getZ(), centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ(), (centreOfMass-stellarObject->getPosition()).getLength());
     //     printf("MultipoleAcceleration: (%.15f, %.15f, %.15f), direct calculation: (%.15f, %.15f, %.15f)\n", acceleration.getX(), acceleration.getY(), acceleration.getZ(), dSumAcc.getX(), dSumAcc.getY(), dSumAcc.getZ());
     // }
+    // printf("Tree acceleration of %s: (%s). Angle is: %Lf\n", stellarObject->getName(), acceleration.toString(), angle);
     return acceleration;
 }
 
-double TreeCodeNode::calculateAngle(StellarObject *stellarObject){
-    double angle;
+long double TreeCodeNode::calculateAngle(StellarObject *stellarObject){
+    long double angle;
     // Approximating angle with l/distance
-    double distance = (stellarObject->getPosition() - getCentreOfMassPosition()).getLength();
-    double l = PositionVector(length, width, height).getLength();
+    long double distance = (getRelevantPositionOfTreetype(stellarObject) - getCentreOfMassPosition()).getLength();
+    // printf("Distance between node and %s: %Lf. position: %s, nodeposition: %s, position - nodeposition: (%s)\n", stellarObject->getName(), distance, stellarObject->getPosition().toString(), getCentreOfMassPosition().toString(), (stellarObject->getPosition() - getCentreOfMassPosition()).toString());
+    long double l = PositionVector(length, width, height).getLength();
     angle = l/distance;
 
     return angle;
 }
 
 void TreeCodeNode::updateCorners(){
-    double x = minCornerPosition.getX();
-    double y = minCornerPosition.getY();
-    double z = minCornerPosition.getZ();
+    long double x = minCornerPosition.getX();
+    long double y = minCornerPosition.getY();
+    long double z = minCornerPosition.getZ();
     corners.clear();
     corners.push_back(PositionVector(x, y, z));
     corners.push_back(PositionVector(x, y, z+height));
@@ -280,4 +288,32 @@ int TreeCodeNode::countNodes(){
         count+=child->countNodes();
     }
     return count;
+}
+
+PositionVector TreeCodeNode::getRelevantPositionOfTreetype(StellarObject *stellarObject){
+    if(type == LOCAL_TREE){
+        return stellarObject->getPosition();
+    }
+    return stellarObject->getFuturePosition();
+}
+
+long double TreeCodeNode::getRelevantXOfTreetype(StellarObject *stellarObject){
+    if(type == LOCAL_TREE){
+        return stellarObject->getX();
+    }
+    return stellarObject->getFuturePosition().getX();
+}
+
+long double TreeCodeNode::getRelevantYOfTreetype(StellarObject *stellarObject){
+    if(type == LOCAL_TREE){
+        return stellarObject->getY();
+    }
+    return stellarObject->getFuturePosition().getY();
+}
+
+long double TreeCodeNode::getRelevantZOfTreetype(StellarObject *stellarObject){
+    if(type == LOCAL_TREE){
+        return stellarObject->getZ();
+    }
+    return stellarObject->getFuturePosition().getZ();
 }

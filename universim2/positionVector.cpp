@@ -13,7 +13,7 @@ PositionVector::PositionVector(){
     getLength();
 }
 
-PositionVector::PositionVector(double x, double y, double z){
+PositionVector::PositionVector(long double x, long double y, long double z){
     validLength = false;
     this->x = x;
     this->y = y;
@@ -29,19 +29,19 @@ PositionVector::PositionVector(PositionVector *parent){
     getLength();
 }
 
-double PositionVector::getX(){
+long double PositionVector::getX(){
     return x;
 }
 
-double PositionVector::getY(){
+long double PositionVector::getY(){
     return y;
 }
 
-double PositionVector::getZ(){
+long double PositionVector::getZ(){
     return z;
 }
 
-double PositionVector::getLength(){
+long double PositionVector::getLength(){
     if(validLength){
         return length;
     }
@@ -50,27 +50,27 @@ double PositionVector::getLength(){
     return length;
 }
 
-void PositionVector::setX(double x){
+void PositionVector::setX(long double x){
     this->x = x;
     validLength = false;
 }
 
-void PositionVector::setY(double y){
+void PositionVector::setY(long double y){
     this->y = y;
     validLength = false;
 }
 
-void PositionVector::setZ(double z){
+void PositionVector::setZ(long double z){
     this->z = z;
     validLength = false;
 }
 
-double PositionVector::distance(PositionVector position){
+long double PositionVector::distance(PositionVector position){
     return std::sqrt(std::pow(x - position.getX(), 2) + std::pow(y - position.getY(), 2) + std::pow(z - position.getZ(), 2));
 }
 
 PositionVector PositionVector::normalise(){
-    double vectorLength = getLength();
+    long double vectorLength = getLength();
     return PositionVector(x/vectorLength, y/vectorLength, z/vectorLength);
 }
 
@@ -82,11 +82,11 @@ PositionVector PositionVector::operator - (PositionVector position){
     return PositionVector(x - position.getX(), y - position.getY(), z - position.getZ());
 }
 
-PositionVector PositionVector::operator * (double multiplier){
+PositionVector PositionVector::operator * (long double multiplier){
     return PositionVector(x * multiplier, y * multiplier, z * multiplier);
 }
 
-PositionVector PositionVector::operator / (double multiplier){
+PositionVector PositionVector::operator / (long double multiplier){
     return PositionVector(x / multiplier, y / multiplier, z / multiplier);
 }
 
@@ -111,14 +111,14 @@ void PositionVector::operator -= (PositionVector position){
     validLength = false;
 }
 
-void PositionVector::operator *= (double multiplier){
+void PositionVector::operator *= (long double multiplier){
     x *= multiplier;
     y *= multiplier;
     z *= multiplier;
     validLength = false;
 }
 
-void PositionVector::operator /= (double multiplier){
+void PositionVector::operator /= (long double multiplier){
     x /= multiplier;
     y /= multiplier;
     z /= multiplier;
@@ -129,7 +129,7 @@ bool PositionVector::operator == (PositionVector position){
     return (x == position.getX() && y == position.getY() && z == position.getZ());
 }
 
-double PositionVector::rQr(Matrix3d Q){
+long double PositionVector::rQr(Matrix3d Q){
     PositionVector QR(0, 0, 0);
     QR = Qr(Q);
     return QR.getX() * x + QR.getY() * y + QR.getZ() * z;

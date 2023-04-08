@@ -6,8 +6,8 @@
 
 class Moon : public StellarObject{
 public:
-    Moon(const char *name, double radius, double mass, double meanDistance, double eccentricity, double inclination);
-    Moon(const char *name, double radius, double mass, double meanDistance, double eccentricity, double inclination, int colour);
+    Moon(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination);
+    Moon(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int colour);
 };
 
 #endif

@@ -27,19 +27,19 @@ private:
     // Acceleration from bodies in own system and other near body: recalculated every tick
     PositionVector localAcceleration;
     // Mass of object - in case of starsystem mass of all stars combined
-    double mass;
+    long double mass;
     // Total mass contained in respective system
-    double totalMass;
+    long double totalMass;
     // Radius of object
-    double radius;
+    long double radius;
     // Initial mean distance of orbit around center of mass of parent, parent itself may be a bit further/closer. Used for initialisation
-    double meanDistance;
+    long double meanDistance;
     // Eccentricity at start
-    double eccentricity;
+    long double eccentricity;
     // Inclination at start - currently always in relation to plane z=0
-    double inclination;
+    long double inclination;
     // Gets periodically updated to account for shifting - needed to store one whole orbit in lastPos array - in terran years - currently not in use
-    double period;
+    long double period;
     // Determines type of body: 0: Galactic Center, 1: Starsystem, 2: Star, 3: Planet, 4: Moon/Asteroid, 5: Comet
     int type;
     // Colour of body
@@ -51,52 +51,74 @@ private:
     // Vector with all children
     std::vector<StellarObject*> children;
 
+    // For stellar gravitational computations
+    PositionVector oldPosition;
+    PositionVector oldVelocity;
+    PositionVector oldStellarAcceleration;
+    PositionVector futurePosition;
+    PositionVector futureVelocity;
+    PositionVector futureStellarAcceleration;
 public:
     // Initialisation units are all relativ to reference units: they are converted in constructor
-    StellarObject(const char *name, int type, double radius, double mass, double meanDistance, double eccentricity, double inclination);
-    StellarObject(const char *name, int type, double radius, double mass, double meanDistance, double eccentricity, double inclination, int colour);
+    StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination);
+    StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int colour);
 
     void place();
-    void initialiseVelocity();
-    void updatePosition(double deltaT);
-    void updateVelocity(double deltaT);
+    void updatePosition(long double deltaT);
+    void updateVelocity(long double deltaT);
+    void updateFuturePosition(long double deltaT);
+    void updateFutureVelocity(long double deltaT);
     void updateStellarAcceleration(Tree *tree);
     void updateLocalAcceleration(Tree *tree);
+    void updateNewStellarValues();
     void addChild(StellarObject *child);
     void calculateTotalMass();
     void calculateCentreOfMass();
 
     void setParent(StellarObject *parent);
-    void setMass(double mass);
-    void setRadius(double radius);
-    void setMeanDistance(double meanDistance);
-    void setInclination(double inclination);
-    void setEccentricity(double eccentricity);
+    void setMass(long double mass);
+    void setRadius(long double radius);
+    void setMeanDistance(long double meanDistance);
+    void setInclination(long double inclination);
+    void setEccentricity(long double eccentricity);
     void setName(const char *name);
     void setColour(int colour);
     void setHomeSystem(StarSystem *homeSystem);
     void setLocalAcceleration(PositionVector localAcceleration);
+    void setStellarAcceleration(PositionVector stellarAcceleration);
+    void setFutureStellarAcceleration(PositionVector futureStellarAcceleration);
+    void setFutureVelocity(PositionVector futureVelocity);
+    void setFuturePosition(PositionVector futurePosition);
+    void setOldStellarAcceleration(PositionVector oldStellarAcceleration);
+    void setOldVelocity(PositionVector oldVelocity);
+    void setOldPosition(PositionVector oldPosition);
 
     // Getter
-    double getX();
-    double getY();
-    double getZ();
+    long double getX();
+    long double getY();
+    long double getZ();
     PositionVector getPosition();
     PositionVector getVelocity();
     PositionVector getLocalAcceleration();
     PositionVector getCentreOfMass();
     PositionVector getUpdatedCentreOfMass();
-    double getRadius();
-    double getMass();
-    double getTotalMass();
-    double getEccentricity();
-    double getMeanDistance();
+    long double getRadius();
+    long double getMass();
+    long double getTotalMass();
+    long double getEccentricity();
+    long double getMeanDistance();
     StellarObject *getParent();
     const char *getName();
     std::vector<StellarObject*> *getChildren();
     int getType();
     int getColour();
     StarSystem *getHomeSystem();
+    PositionVector getFutureStellarAcceleration();
+    PositionVector getFutureVelocity();
+    PositionVector getFuturePosition();
+    PositionVector getOldStellarAcceleration();
+    PositionVector getOldVelocity();
+    PositionVector getOldPosition();
 
     void freeObject();
     void updateCentreOfMass();

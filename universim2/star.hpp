@@ -16,11 +16,11 @@ class Star : public StellarObject{
 
     public:
         // Mean distance only matters for star systems with multiple stars, else it should always be 0. If it is, eccentricity and inclination should also be 0
-        Star(const char *name, double radius, double mass, double meanDistance, double eccentricity, double inclination, int surfaceTemperature);
+        Star(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int surfaceTemperature);
         // Create a randomly sized and tempered star with mass constraint
-        Star(const char *name, double mass, double meanDistance, double eccentricity, double inclination);
+        Star(const char *name, long double mass, long double meanDistance, long double eccentricity, long double inclination);
         // Create a randomly sized and tempered star with no mass constraint
-        Star(const char *name, double meanDistance, double eccentricity, double inclination);
+        Star(const char *name, long double meanDistance, long double eccentricity, long double inclination);
         // Create a fully random star
         Star();
 

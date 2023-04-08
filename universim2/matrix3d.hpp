@@ -14,8 +14,8 @@ public:
     Matrix3d(PositionVector vector0, PositionVector vector1, PositionVector vector2);
     void setVector(PositionVector vector, short index);
     PositionVector getVector(short index);
-    double getEntry(short vector, short entry);
-    void setEntry(short vector, short entry, double value);
+    long double getEntry(short vector, short entry);
+    void setEntry(short vector, short entry, long double value);
     PositionVector operator * (PositionVector vector);
     Matrix3d transpose();
     void print();

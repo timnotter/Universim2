@@ -52,7 +52,7 @@ PositionVector Matrix3d::getVector(short index){
     }
 }
 
-double Matrix3d::getEntry(short vector, short entry){
+long double Matrix3d::getEntry(short vector, short entry){
     switch(entry){
         case 0:
             return getVector(vector).getX();
@@ -66,7 +66,7 @@ double Matrix3d::getEntry(short vector, short entry){
     }
 }
 
-void Matrix3d::setEntry(short vector, short entry, double value){
+void Matrix3d::setEntry(short vector, short entry, long double value){
     switch(entry){
         case 0:
             getVector(vector).setX(value);
