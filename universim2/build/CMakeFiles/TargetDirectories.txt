@@ -1,3 +1,0 @@
-/home/tim/vs-code-workplace/Universim2/universim2/build/CMakeFiles/edit_cache.dir
-/home/tim/vs-code-workplace/Universim2/universim2/build/CMakeFiles/rebuild_cache.dir
-/home/tim/vs-code-workplace/Universim2/universim2/build/CMakeFiles/universim2.dir
