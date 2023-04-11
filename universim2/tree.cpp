@@ -46,6 +46,8 @@ void updateStellarAccelerationTreeMultiThread(Tree *tree, int begin, int end){
         }
         // printf("Acceleration on %s is (%s)\n", stellarObject->getName(), acceleration.toString());
         stellarObject->setFutureStellarAcceleration(acceleration);
+        // if(stellarObject->getType() != GALACTIC_CORE)
+        //     printf("Future acceleration of %s at position (%s) is (%s) with parent %s position (%s)\n", stellarObject->getName(), stellarObject->getOldPosition().toString(), acceleration.toString(), stellarObject->getParent()->getName(), stellarObject->getParent()->getPosition().toString());
     }
 }
 
@@ -54,12 +56,12 @@ void Tree::update(long double timestep, Renderer *renderer){
     bool treeApproach = true;
     switch(treeType){
         // -------------------------------------------------------------------- TODO --------------------------------------------------------------------
-        // Leapfrog
+        // Leapfrog - probably not really feasible
         case STELLAR_TREE:
-            // for(StellarObject *stellarObject: *objectsInTree){
-            //     stellarObject->updateFutureVelocity(timestep);
-            //     stellarObject->updateFuturePosition(timestep);
-            // }
+            for(StellarObject *stellarObject: *objectsInTree){
+                stellarObject->updateFutureVelocity(timestep);
+                stellarObject->updateFuturePosition(timestep);
+            }
             if(stellarTreeMultiThread){
                 int threadNumber = 16;
                 int amount = objectsInTree->size()/threadNumber;
@@ -71,21 +73,21 @@ void Tree::update(long double timestep, Renderer *renderer){
                 for(int i=0;i<threadNumber;i++){
                     threads.at(i).join();
                 }
-                // This works
-                for(StellarObject *stellarObject: *objectsInTree){
-                    if(stellarObject->getType() == GALACTIC_CORE){
-                        stellarObject->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
-                        stellarObject->updateVelocity(timestep);
-                        stellarObject->updatePosition(timestep);
-                    }
-                    else{
-                        stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
-                        stellarObject->getChildren()->at(0)->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
-                        stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
-                        stellarObject->getChildren()->at(0)->updatePosition(timestep);
-                        stellarObject->setFuturePosition(stellarObject->getChildren()->at(0)->getPosition());
-                    }
-                }
+                // This kind works, but with outwards drift. Keep away from it: normal way should work better
+                // for(StellarObject *stellarObject: *objectsInTree){
+                //     if(stellarObject->getType() == GALACTIC_CORE){
+                //         stellarObject->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
+                //         stellarObject->updateVelocity(timestep);
+                //         stellarObject->updatePosition(timestep);
+                //     }
+                //     else{
+                //         stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
+                //         stellarObject->getChildren()->at(0)->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
+                //         stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
+                //         stellarObject->getChildren()->at(0)->updatePosition(timestep);
+                //         stellarObject->setFuturePosition(stellarObject->getChildren()->at(0)->getPosition());
+                //     }
+                // }
             }
             else{
                 for(StellarObject *stellarObject: *objectsInTree){

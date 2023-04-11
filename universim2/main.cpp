@@ -132,6 +132,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 				stellarObject->updateVelocity(TIMESTEP_LOCAL);
 				stellarObject->updatePosition(TIMESTEP_LOCAL);
 			}
+			// printf("Current centre of mass of galaxy %s: (%s)\n", galaxies->at(0)->getName(), galaxies->at(0)->getUpdatedCentreOfMass().toString());
 			localUpdateIsReady->unlock();
 			stellarUpdateIsReady->lock();
 			usleep(10);
@@ -233,44 +234,41 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// Initialise all objects
 	galaxies->push_back(new GalacticCore("Sagittarius A*", 1, 1, 0, 0xFFFF00));
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 1.047)); 			// this inclinations is from the solar plan to the galactic plane, thus not of interest
-	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 0.1));
-	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
-    // ADD_PLANET(new Planet("Mercury", 0.3829, 0.055, 0.387098, 0.205630, 7.005*PI/180));
-    // ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180));
-	// ADD_PLANET(new Planet("Earth", 1, 1, 1, 0.0167086, 0));
-    // ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
-    // ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180));
-    // ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
-    // ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
-    // ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180));
-	// // Read file of Jupiters moons
-    // ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180));
-	// // Read file of Saturns moons
-    // ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180));
-	// // Read file of Uranus' moons
-    // ADD_PLANET(new Planet("Neptune", 24622000/terranRadius, 17.147, 30.07, 0.008678, 1.77*PI/180));
-	// // Read file of Neptunes moons
-    // ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180));
-	// ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
+	ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 0.1));
+	ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
+    ADD_PLANET(new Planet("Mercury", 0.3829, 0.055, 0.387098, 0.205630, 7.005*PI/180));
+    ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180));
+	ADD_PLANET(new Planet("Earth", 1, 1, 1, 0.0167086, 0));
+    ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
+    ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180));
+    ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
+    ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
+    ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180));
+	// Read file of Jupiters moons
+    ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180));
+	// Read file of Saturns moons
+    ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180));
+	// Read file of Uranus' moons
+    ADD_PLANET(new Planet("Neptune", 24622000/terranRadius, 17.147, 30.07, 0.008678, 1.77*PI/180));
+	// Read file of Neptunes moons
+    ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180));
+	ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
 
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0, 0));
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
     // ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
     // ADD_MOON(new Moon("Moon", 1, 1, 1, 0, 0));
 
-	ADD_STARSYSTEM(new StarSystem("Solar System", 0.01, 0, 0));
-	ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
+	// ADD_STARSYSTEM(new StarSystem("Solar System", 0.01, 0, 0));
+	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 
 	// Add random stars - currently orbit is still fixed
-	int totalStarsystems = 100;
+	int totalStarsystems = 10000;
 	int threadNumber;
 	int amount;
     std::vector<std::thread> threads;
-	if (totalStarsystems == 0) goto skipInitialisation;
 	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
-	printf("ts: %d, tN: %d\n", totalStarsystems, threadNumber);
     amount = totalStarsystems/threadNumber;
-	printf("huhu\n");
     for(int i=0;i<threadNumber-1;i++){
         threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock));
     }
@@ -278,7 +276,6 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	for(int i=0;i<threadNumber;i++){
         threads.at(i).join();
     }
-	skipInitialisation:
 
 	for(StellarObject *galacticCore: *galaxies){
         for(StellarObject *starSystem: *(galacticCore->getChildren())){

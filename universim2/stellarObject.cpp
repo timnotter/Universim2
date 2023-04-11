@@ -91,18 +91,49 @@ void StellarObject::place(){
     // printf("Trying to place %s\n", name);
     if(type == GALACTIC_CORE){
         centreOfMass = PositionVector();
+        position = PositionVector();
+        velocity = PositionVector();
         if(meanDistance != 0){
             // ------------------------------------------------------------------------ TODO ------------------------------------------------------------------------
             // Place different galactic core at appropriate position, for example: take two random angles to take a position of the border of ball with radius meanDistance
             centreOfMass.setX(meanDistance);
             position = centreOfMass;
         }
+        printf("Centre of mass initialised to: (%s)\n", centreOfMass.toString());
+
+        PositionVector tempCentreOfMass = PositionVector();
+        PositionVector childrenMomentum = PositionVector();
+        long double childrenTotalMass = 0;
+        // printf("Trying to place children of %s\n", name);
         for(StellarObject *child: children){
             child->place();
+            printf("%s - position: (%s), velocity: (%s)\n", child->getName(), child->getPosition().toString(), child->getVelocity().toString());
+            child->calculateTotalMass();
+            long double childTotalMass = child->getTotalMass();
+            tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
+            childrenMomentum += (child->getVelocity()) * childTotalMass;
+            childrenTotalMass += childTotalMass;
         }
-        // --------------------------------------- Currently galactic core is not shifted to correct for centre of mass ---------------------------------------
-        position = PositionVector(&centreOfMass);
-        velocity = PositionVector();
+        if(childrenTotalMass!=0) tempCentreOfMass /= childrenTotalMass;
+        calculateTotalMass();
+        // printf("Centre of mass of children of %s is (%s). ChildrenTotalMass: %Lf, Mass: %Lf\n", getName(), tempCentreOfMass.toString(), childrenTotalMass, mass);
+        position.setX((centreOfMass.getX() * totalMass - tempCentreOfMass.getX() * childrenTotalMass) / mass);
+        position.setY((centreOfMass.getY() * totalMass - tempCentreOfMass.getY() * childrenTotalMass) / mass);
+        position.setZ((centreOfMass.getZ() * totalMass - tempCentreOfMass.getZ() * childrenTotalMass) / mass);
+        printf("%s - position: (%s), velocity: (%s)\n", getName(), getPosition().toString(), getVelocity().toString());
+        // printf("(%Lf - %Lf) / %Lf = %Lf\n", centreOfMass.getX() * totalMass, tempCentreOfMass.getX() * childrenTotalMass, mass, position.getX());
+        // printf("Position: (%s)\n", position.toString());
+        // printf("Calculated CoM: (%s)\n", ((position * mass + tempCentreOfMass * childrenTotalMass)/totalMass).toString());
+        printf("CoM: (%s)\n", getUpdatedCentreOfMass().toString());
+        if(children.size()!=0){
+            PositionVector before = velocity;
+            // velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
+            velocity += (childrenMomentum * -(1/mass));
+            // velocity += (children.at(0)->getVelocity() * children.at(0)->getTotalMass() * (-1))/mass;
+            printf("childrenMomentum * -(1/mass): (%s), adjustement: (%s)\n", (childrenMomentum * -(1/mass)).toString(), ((position / position.getLength()) * (G * totalMass / position.getLength())).toString());
+            printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
+        }
+        printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s), equal: (%d)\n", (childrenMomentum + velocity * mass).toString(), childrenMomentum.toString(), (velocity * mass).toString(), (childrenMomentum == (velocity * mass)));
     }
     else{
         // Calculation of semi major axis
@@ -283,8 +314,9 @@ void StellarObject::calculateTotalMass(){
         child->calculateTotalMass();
         totalMass += child->getTotalMass();
     }
-    totalMass += mass;
     if(type == STARSYSTEM) mass = totalMass;
+    else totalMass += mass;
+    // printf("Total mass of %s is %Lf\n", getName(), totalMass);
 }
 
 void StellarObject::calculateCentreOfMass(){
@@ -502,8 +534,12 @@ void StellarObject::freeObject(){
 }
 
 void StellarObject::updateCentreOfMass(){
-    long double totalMass = mass;
-    PositionVector adjustedCoM = position * mass;
+    long double totalMass = 0;
+    PositionVector adjustedCoM = PositionVector();
+    if(type != STARSYSTEM){
+        totalMass = mass;
+        adjustedCoM = position * mass;
+    }
     for(StellarObject *child: children){
         totalMass += child->getTotalMass();
         child->updateCentreOfMass();

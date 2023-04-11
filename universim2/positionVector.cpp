@@ -90,6 +90,10 @@ PositionVector PositionVector::operator / (long double multiplier){
     return PositionVector(x / multiplier, y / multiplier, z / multiplier);
 }
 
+PositionVector PositionVector::operator / (PositionVector position){
+    return PositionVector(x / position.getX(), y / position.getY(), z / position.getZ());
+}
+
 void PositionVector::operator = (PositionVector position){
     x = position.getX();
     y = position.getY();

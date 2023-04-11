@@ -100,5 +100,5 @@ Matrix3d Matrix3d::transpose(){
 }
 
 void Matrix3d::print(){
-    printf("[(%f, %f, %f), (%f, %f, %f), (%f, %f, %f)]\n", vector0.getX(), vector0.getY(), vector0.getZ(), vector1.getX(), vector1.getY(), vector1.getZ(), vector2.getX(), vector2.getY(), vector2.getZ());
+    printf("[(%s), (%s), (%s)]\n", vector0.toString(), vector1.toString(), vector2.toString());
 }

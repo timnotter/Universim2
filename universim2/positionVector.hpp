@@ -32,6 +32,7 @@ public:
     PositionVector operator - (PositionVector position);
     PositionVector operator * (long double multiplier);
     PositionVector operator / (long double multiplier);
+    PositionVector operator / (PositionVector position);
     void operator = (PositionVector position);
     void operator += (PositionVector position);
     void operator -= (PositionVector position);
