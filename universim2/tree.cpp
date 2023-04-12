@@ -63,7 +63,7 @@ void Tree::update(long double timestep, Renderer *renderer){
                 stellarObject->updateFuturePosition(timestep);
             }
             if(stellarTreeMultiThread){
-                int threadNumber = 16;
+                int threadNumber = 2;
                 int amount = objectsInTree->size()/threadNumber;
                 std::vector<std::thread> threads;
                 for(int i=0;i<threadNumber-1;i++){

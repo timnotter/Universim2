@@ -94,7 +94,7 @@ void Renderer::drawObjects(){
 	// struct timespec currTime;
 	// clock_gettime(CLOCK_MONOTONIC, &prevTime);
 
-    int threadNumber = 4;
+    int threadNumber = 6;
     int amount = allObjects->size()/threadNumber;
     std::vector<std::thread> threads;
     for(int i=0;i<threadNumber-1;i++){
@@ -170,14 +170,14 @@ void Renderer::drawDrawObjects(){
     // ------------------------------------------------------- TODO -------------------------------------------------------
     // Why do I even lock here? Isn't that unneccessary?
     sortObjectsOnScreen();
-    currentlyUpdatingOrDrawingLock->lock();
+    // currentlyUpdatingOrDrawingLock->lock();
     for(DrawObject *drawObject: dotsOnScreen){
         drawObject->draw(this);
     }
     for(DrawObject *drawObject: objectsOnScreen){
         drawObject->draw(this);
     }
-    currentlyUpdatingOrDrawingLock->unlock();
+    // currentlyUpdatingOrDrawingLock->unlock();
 
     int dotsOnScreenSize = dotsOnScreen.size();
     int objectsOnScreenSize = objectsOnScreen.size();
@@ -317,12 +317,12 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     int backgroundBlue = BACKGROUND_COL & (0b11111111);
     // if(object->getType()==STAR) printf("Before - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, red, green, blue, size);
     if(object->getType() == GALACTIC_CORE || object->getType() == STAR){
-        if(size < 1.0/1000){
+        if(size < 1.0/1000000){
             isPoint = true;
             // colour = ((int)(red*(1 + std::log(1000*size/2+0.5))) << 16) + ((int)(green*(1 + std::log(1000*size/2+0.5))) << 8) + (int)(blue*(1 + std::log(1000*size/2+0.5)));
-            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(1000*size/2+0.0001)/log(100000)))) << 16)
-            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(1000*size/2+0.0001)/log(100000)))) << 8)
-            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(1000*size/2+0.0001)/log(100000))));
+            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(1000000*size/2+0.0001)/log(100000)))) << 16)
+            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(1000000*size/2+0.0001)/log(100000)))) << 8)
+            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(1000000*size/2+0.0001)/log(100000))));
             // if(object->getType()==STAR) printf("After - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, (int)(red*(1 + std::log(1000*size/2+0.5))), (int)(green*(1 + std::log(1000*size/2+0.5))), (int)(blue*(1 + std::log(1000*size/2+0.5))), size);
         }
         else if(size < 1){
@@ -356,18 +356,19 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         if(visibleOnScreen(x, y)) {
             drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), POINT);
             dotsToAddOnScreen->push_back(drawObject);
-            // addDotOnScreen(drawObject);
         }
         // printf("Exited calculateObjectPosition\n");
         return;
     }
     else if(size<1){
+        // drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), PLUS);
+        // objectsToAddOnScreen->push_back(drawObject);
+        // drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
+        // objectsToAddOnScreen->push_back(drawObject);
         drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), PLUS);
-        objectsToAddOnScreen->push_back(drawObject);
-        // addObjectOnScreen(drawObject);
+        dotsToAddOnScreen->push_back(drawObject);
         drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
-        objectsToAddOnScreen->push_back(drawObject);
-        // addObjectOnScreen(drawObject);
+        dotsToAddOnScreen->push_back(drawObject);
         return;
     }
     drawObject = new DrawObject(colour, x, y, size, distanceNewBasis.getLength(), CIRCLE);

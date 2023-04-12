@@ -263,16 +263,24 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 
 	// Add random stars - currently orbit is still fixed
-	int totalStarsystems = 10000;
+	int totalStarsystems = 100000;
 	int threadNumber;
 	int amount;
+	long double characteristicScaleLength = 13000 * lightyear;
+	// We use a function derived from the cumulative distribution function from hernquist
+	auto densityFunction = [characteristicScaleLength](double u) -> long double {
+		return characteristicScaleLength * (std::sqrt(u) + u) / (1-u);
+	};
+
+	// printf("densityFunction(0.25) = %.0Lf\n", densityFunction(0.25));
+	// printf("a = %Lf, perc: %Lf\n", characteristicScaleLength, densityFunction(0.25)/characteristicScaleLength);
     std::vector<std::thread> threads;
 	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
     amount = totalStarsystems/threadNumber;
     for(int i=0;i<threadNumber-1;i++){
-        threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock));
+        threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock, densityFunction));
     }
-    threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock));
+    threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock, densityFunction));
 	for(int i=0;i<threadNumber;i++){
         threads.at(i).join();
     }
@@ -303,12 +311,12 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// printf("Distance of moon and CoM earthsystem: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getCentreOfMass() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
 	// printf("Placed all stellar objects\n");
 }
-void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock){
+void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock, std::function<long double(double)> densityFunction){
 	// globalGalaxies is called like that, because then we can use the name "galaxies" and don't have to change the define
 	std::vector<StellarObject*> *galaxies = new std::vector<StellarObject*>();
 	galaxies->push_back(new GalacticCore("", 0, 0, 0));
 	for(int i=0;i<amount;i++){
-		ADD_STARSYSTEM(new StarSystem(1));
+		ADD_STARSYSTEM(new StarSystem(densityFunction, 1));
 	}
 
 	// We reuse the currentlyUpdatingOrDrawingLock

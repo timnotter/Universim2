@@ -2,6 +2,7 @@
 #define STARSYSTEM_HPP
 
 #include <vector>
+#include <functional>
 #include "stellarObject.hpp"
 
 class StarSystem : public StellarObject{
@@ -11,7 +12,7 @@ private:
 public:
     // Spawn starsystem with a number of "premade" stars
     StarSystem(const char *name, long double meanDistance, long double eccentricity, long double inclination, int numberOfStars = 0);
-    StarSystem(int numberOfStars = 1);
+    StarSystem(std::function<long double(double)> densityFunction, int numberOfStars = 1);
     void generateName();
     void setLoneStar(bool loneStar);
     bool getLoneStar();

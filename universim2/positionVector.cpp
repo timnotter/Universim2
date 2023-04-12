@@ -133,6 +133,10 @@ bool PositionVector::operator == (PositionVector position){
     return (x == position.getX() && y == position.getY() && z == position.getZ());
 }
 
+bool PositionVector::operator != (PositionVector position){
+    return !(x == position.getX() && y == position.getY() && z == position.getZ());
+}
+
 long double PositionVector::rQr(Matrix3d Q){
     PositionVector QR(0, 0, 0);
     QR = Qr(Q);
@@ -148,9 +152,9 @@ PositionVector PositionVector::Qr(Matrix3d Q){
 }
 
 const char *PositionVector::toString(){
-    std::ostringstream dateStream;
-    dateStream << x << ", " << y << ", " << z;
-    vectorString = dateStream.str();
+    std::ostringstream outputStream;
+    outputStream << x << ", " << y << ", " << z;
+    vectorString = outputStream.str();
 
     return vectorString.c_str();
 }

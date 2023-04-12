@@ -90,6 +90,8 @@ void StellarObject::place(){
     // If object is galactic core, place it anywhere with distance to (0/0/0) = meanDistance
     // printf("Trying to place %s\n", name);
     if(type == GALACTIC_CORE){
+        tryAgain:
+
         centreOfMass = PositionVector();
         position = PositionVector();
         velocity = PositionVector();
@@ -99,7 +101,7 @@ void StellarObject::place(){
             centreOfMass.setX(meanDistance);
             position = centreOfMass;
         }
-        printf("Centre of mass initialised to: (%s)\n", centreOfMass.toString());
+        // printf("Centre of mass initialised to: (%s)\n", centreOfMass.toString());
 
         PositionVector tempCentreOfMass = PositionVector();
         PositionVector childrenMomentum = PositionVector();
@@ -107,7 +109,7 @@ void StellarObject::place(){
         // printf("Trying to place children of %s\n", name);
         for(StellarObject *child: children){
             child->place();
-            printf("%s - position: (%s), velocity: (%s)\n", child->getName(), child->getPosition().toString(), child->getVelocity().toString());
+            // printf("%s - position: (%s), velocity: (%s)\n", child->getName(), child->getPosition().toString(), child->getVelocity().toString());
             child->calculateTotalMass();
             long double childTotalMass = child->getTotalMass();
             tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
@@ -120,20 +122,24 @@ void StellarObject::place(){
         position.setX((centreOfMass.getX() * totalMass - tempCentreOfMass.getX() * childrenTotalMass) / mass);
         position.setY((centreOfMass.getY() * totalMass - tempCentreOfMass.getY() * childrenTotalMass) / mass);
         position.setZ((centreOfMass.getZ() * totalMass - tempCentreOfMass.getZ() * childrenTotalMass) / mass);
-        printf("%s - position: (%s), velocity: (%s)\n", getName(), getPosition().toString(), getVelocity().toString());
+        // printf("%s - position: (%s), velocity: (%s)\n", getName(), getPosition().toString(), getVelocity().toString());
         // printf("(%Lf - %Lf) / %Lf = %Lf\n", centreOfMass.getX() * totalMass, tempCentreOfMass.getX() * childrenTotalMass, mass, position.getX());
         // printf("Position: (%s)\n", position.toString());
         // printf("Calculated CoM: (%s)\n", ((position * mass + tempCentreOfMass * childrenTotalMass)/totalMass).toString());
-        printf("CoM: (%s)\n", getUpdatedCentreOfMass().toString());
+        // printf("CoM: (%s)\n", getUpdatedCentreOfMass().toString());
         if(children.size()!=0){
             PositionVector before = velocity;
             // velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
             velocity += (childrenMomentum * -(1/mass));
             // velocity += (children.at(0)->getVelocity() * children.at(0)->getTotalMass() * (-1))/mass;
-            printf("childrenMomentum * -(1/mass): (%s), adjustement: (%s)\n", (childrenMomentum * -(1/mass)).toString(), ((position / position.getLength()) * (G * totalMass / position.getLength())).toString());
-            printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
+            // printf("childrenMomentum * -(1/mass): (%s), adjustement: (%s)\n", (childrenMomentum * -(1/mass)).toString(), ((position / position.getLength()) * (G * totalMass / position.getLength())).toString());
+            // printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
         }
-        printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s), equal: (%d)\n", (childrenMomentum + velocity * mass).toString(), childrenMomentum.toString(), (velocity * mass).toString(), (childrenMomentum == (velocity * mass)));
+        printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + velocity * mass).toString(), childrenMomentum.toString(), (velocity * mass).toString());
+        if((childrenMomentum + velocity * mass) != PositionVector()){
+            printf("Total momentum is not 0, trying again\n");
+            goto tryAgain;
+        }
     }
     else{
         // Calculation of semi major axis

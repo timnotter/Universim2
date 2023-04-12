@@ -1,5 +1,6 @@
 #include <vector>
 #include <mutex>
+#include <functional>
 #include "renderer.hpp"
 #include "stellarObject.hpp"
 #include "date.hpp"
@@ -16,9 +17,9 @@
 // #define TIMESTEP_LOCAL 1 // Timestep per update iteration in seconds
 
 // #define TIMESTEP_LOCAL 3600 * 24 * 365 * 100L
-#define TIMESTEP_STELLAR 3600 * 24 * 365 * 100L
+#define TIMESTEP_STELLAR 3600 * 24 * 365 * 10L
 
 void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, bool *isRunning, bool *isPaused, Date *date, int *optimalTimeLocalUpdate, Renderer *renderer, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady);
 void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, bool *isRunning, Renderer *renderer, std::vector<StellarObject*> *allObjects, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady);
 void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock);
-void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock);
+void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock, std::function<long double(double)> densityFunction);

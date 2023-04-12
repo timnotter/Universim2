@@ -12,16 +12,20 @@ StarSystem::StarSystem(const char *name, long double meanDistance, long double e
     }
 }
 
-StarSystem::StarSystem(int numberOfStars) : StellarObject("", 1, 0, 0, 0, 0, 0){
+StarSystem::StarSystem(std::function<long double(double)> densityFunction, int numberOfStars) : StellarObject("", 1, 0, 0, 0, 0, 0){
     loneStar = true;
     generateName();
     struct timespec currTime;
     clock_gettime(CLOCK_MONOTONIC, &currTime);
     srand(currTime.tv_nsec);
 
-    // We generate a number between 0 and 5 to determine distance to galactic core
-    long double randomNumber = (long double)rand() / RAND_MAX * 5;
-    setMeanDistance(randomNumber * distanceSagittariusSun);
+    // // We generate a number between 0 and 1 to determine mean distance, according to the delivered density function
+
+    long double randomNumber = (long double)rand() / RAND_MAX;
+    setMeanDistance(densityFunction(randomNumber));
+
+
+
     // Random number between 0 and 0.2 for inclination
     randomNumber = (long double)rand() / RAND_MAX / 5;
     setInclination(randomNumber);

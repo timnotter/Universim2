@@ -39,6 +39,7 @@ public:
     void operator *= (long double multiplier);
     void operator /= (long double multiplier);
     bool operator == (PositionVector position);
+    bool operator != (PositionVector position);
 
     // Functions for the computation of multipole expansion
     long double rQr(Matrix3d Q);
