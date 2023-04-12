@@ -153,7 +153,7 @@ void TreeCodeNode::calculateNodeValues(){       // Centre of mass position seems
 void TreeCodeNode::calculateLeafValues(){
     leaf = true;
     mass = objectsInNode[0]->getMass();
-    minCornerPosition = PositionVector(objectsInNode[0]->getX(), objectsInNode[0]->getY(), objectsInNode[0]->getZ());
+    minCornerPosition = PositionVector(getRelevantXOfTreetype(objectsInNode[0]), getRelevantYOfTreetype(objectsInNode[0]), getRelevantZOfTreetype(objectsInNode[0]));
     centreOfMass = minCornerPosition;
     length = 0;
     width = 0;
@@ -201,6 +201,11 @@ PositionVector TreeCodeNode::calculateAcceleration(StellarObject *stellarObject)
         // stellarObject->getX(), stellarObject->getY(), stellarObject->getZ(), centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ(), distance);
         // printf("Direct calculation: (%f, %f, %f)\n", acceleration.getX(), acceleration.getY(), acceleration.getZ());
         // printf("Leaf acceleration of %s: (%s)\n", stellarObject->getName(), acceleration.toString());
+        // std::string *nameComparison = new std::string("Sagittarius A*");
+        // if(strcmp(stellarObject->getName(), nameComparison->c_str()) == 0){
+        //     printf("Tree acceleration of %s on %s: (%s). Distance: %Lf\n", objectsInNode.at(0)->getName(), stellarObject->getName(), acceleration.toString(), distance);
+        // }
+        // delete nameComparison;
         return acceleration;
     }
 
@@ -212,6 +217,7 @@ PositionVector TreeCodeNode::calculateAcceleration(StellarObject *stellarObject)
         }
         return acceleration;
     }
+    // printf("Angle is small enough for %s\n", stellarObject->getName());
 
     // If angle is small enough but node is no leaf, use multipole expansion to calculate the acceleration. As origin we take (0/0/0)
     // In the formula, position of object is r, and centreOfMass of node is s, so we are going to use that notation 

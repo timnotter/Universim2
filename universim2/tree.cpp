@@ -18,8 +18,14 @@ Tree::Tree(std::vector<StellarObject*> *objectsInTree, std::mutex *currentlyUpda
     this->currentlyUpdatingOrDrawingLock = currentlyUpdatingOrDrawingLock;
 }
 
-void Tree::buildTree(){
+void Tree::buildTree(long double timestep){
     // printf("Tree builder\n");
+    if(treeType){
+        for(StellarObject *stellarObject: *objectsInTree){
+            stellarObject->updateFutureVelocity(timestep);
+            stellarObject->updateFuturePosition(timestep);
+        }
+    }
     root = new TreeCodeNode(objectsInTree);
     // printf("Tree builder end\n");
 }
@@ -34,102 +40,111 @@ void updateStellarAccelerationTreeMultiThread(Tree *tree, int begin, int end){
     std::vector<StellarObject*> *objectsInTree = tree->getObjectsInTree();
     for(int i=begin;i<end;i++){
         stellarObject = objectsInTree->at(i);
-        // stellarObject->updateStellarAcceleration(tree);
+        if(TREE_APPROACH){
+            stellarObject->updateStellarAcceleration(tree);
+            continue;
+        }
 
         PositionVector acceleration = PositionVector();
         for(StellarObject *object: *objectsInTree){
             long double distance = (object->getFuturePosition()-stellarObject->getFuturePosition()).getLength();
             if(distance!=0){
-                // acceleration += (object->getPosition() - stellarObject->getPosition()) * (G * object->getMass() / std::pow(std::sqrt((std::pow(distance, 2) + std::pow(EPSILON, 2))), 3));
                 acceleration += (object->getFuturePosition() - stellarObject->getFuturePosition()).normalise() * G * object->getMass() / std::pow(distance, 2);
             }
         }
         // printf("Acceleration on %s is (%s)\n", stellarObject->getName(), acceleration.toString());
+        // printf("%s - treeApproach acceleration: (%s), ", stellarObject->getName(), stellarObject->getFutureStellarAcceleration().toString());
         stellarObject->setFutureStellarAcceleration(acceleration);
+        // printf(" directSummation acceleration: (%s)\n", stellarObject->getFutureStellarAcceleration().toString());
         // if(stellarObject->getType() != GALACTIC_CORE)
         //     printf("Future acceleration of %s at position (%s) is (%s) with parent %s position (%s)\n", stellarObject->getName(), stellarObject->getOldPosition().toString(), acceleration.toString(), stellarObject->getParent()->getName(), stellarObject->getParent()->getPosition().toString());
     }
 }
 
+void updateLocalAccelerationTreeMultiThread(Tree *tree, int begin, int end){
+    StellarObject *stellarObject = nullptr;
+    std::vector<StellarObject*> *objectsInTree = tree->getObjectsInTree();
+    for(int i=begin;i<end;i++){
+        stellarObject = objectsInTree->at(i);
+        if(TREE_APPROACH){
+            stellarObject->updateLocalAcceleration(tree);
+            // printf("%s - treeApproach acceleration: (%s), ", stellarObject->getName(), stellarObject->getLocalAcceleration().toString());
+            continue;
+        }
+
+        PositionVector acceleration = PositionVector();
+        for(StellarObject *object: *objectsInTree){
+            long double distance = (object->getPosition()-stellarObject->getPosition()).getLength();
+            if(distance!=0){
+                // acceleration += (object->getPosition() - stellarObject->getPosition()) * (G * object->getMass() / std::pow(std::sqrt((std::pow(distance, 2) + std::pow(EPSILON, 2))), 3));
+                acceleration += (object->getPosition() - stellarObject->getPosition()).normalise() * G * object->getMass() / std::pow(distance, 2);
+            }
+        }
+        stellarObject->setLocalAcceleration(acceleration);
+        // printf(" directSummation acceleration: (%s)\n", stellarObject->getLocalAcceleration().toString());
+    }
+}
+
 void Tree::update(long double timestep, Renderer *renderer){
-    bool stellarTreeMultiThread = true;
-    bool treeApproach = true;
+    int threadNumber;
+    int amount;
+    std::vector<std::thread> threads;
     switch(treeType){
         // -------------------------------------------------------------------- TODO --------------------------------------------------------------------
-        // Leapfrog - probably not really feasible
+        // Leapfrog - for stellar acceleration probably not really feasible
         case STELLAR_TREE:
-            for(StellarObject *stellarObject: *objectsInTree){
-                stellarObject->updateFutureVelocity(timestep);
-                stellarObject->updateFuturePosition(timestep);
+            // The position and velocity update is done before the initialisation, such that the nodes also have the new values 
+            // for(StellarObject *stellarObject: *objectsInTree){
+            //     stellarObject->updateFutureVelocity(timestep);
+            //     stellarObject->updateFuturePosition(timestep);
+            // }
+            threadNumber = 1;
+            amount = objectsInTree->size()/threadNumber;
+            threads.clear();
+            for(int i=0;i<threadNumber-1;i++){
+                threads.push_back(std::thread (updateStellarAccelerationTreeMultiThread, this, i * amount, i * amount + amount));
             }
-            if(stellarTreeMultiThread){
-                int threadNumber = 2;
-                int amount = objectsInTree->size()/threadNumber;
-                std::vector<std::thread> threads;
-                for(int i=0;i<threadNumber-1;i++){
-                    threads.push_back(std::thread (updateStellarAccelerationTreeMultiThread, this, i * amount, i * amount + amount));
-                }
-                threads.push_back(std::thread (updateStellarAccelerationTreeMultiThread, this, (threadNumber-1)*amount, objectsInTree->size()));
-                for(int i=0;i<threadNumber;i++){
-                    threads.at(i).join();
-                }
-                // This kind works, but with outwards drift. Keep away from it: normal way should work better
-                // for(StellarObject *stellarObject: *objectsInTree){
-                //     if(stellarObject->getType() == GALACTIC_CORE){
-                //         stellarObject->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
-                //         stellarObject->updateVelocity(timestep);
-                //         stellarObject->updatePosition(timestep);
-                //     }
-                //     else{
-                //         stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
-                //         stellarObject->getChildren()->at(0)->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
-                //         stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
-                //         stellarObject->getChildren()->at(0)->updatePosition(timestep);
-                //         stellarObject->setFuturePosition(stellarObject->getChildren()->at(0)->getPosition());
-                //     }
-                // }
+            threads.push_back(std::thread (updateStellarAccelerationTreeMultiThread, this, (threadNumber-1)*amount, objectsInTree->size()));
+            for(int i=0;i<threadNumber;i++){
+                threads.at(i).join();
             }
-            else{
-                for(StellarObject *stellarObject: *objectsInTree){
-                    if(treeApproach){
-                        stellarObject->updateStellarAcceleration(this);
-                    }
-                    else{
-                        PositionVector acceleration = PositionVector();
-                        for(StellarObject *object: *objectsInTree){
-                            long double distance = (object->getFuturePosition()-stellarObject->getFuturePosition()).getLength();
-                            if(distance!=0){
-                                // acceleration += (object->getPosition() - stellarObject->getPosition()) * (G * object->getMass() / std::pow(std::sqrt((std::pow(distance, 2) + std::pow(EPSILON, 2))), 3));
-                                acceleration += (object->getFuturePosition() - stellarObject->getFuturePosition()).normalise() * G * object->getMass() / std::pow(distance, 2);
-                            }
-                        }
-                        // printf("Acceleration on %s is (%s)\n", stellarObject->getName(), acceleration.toString());
-                        stellarObject->setFutureStellarAcceleration(acceleration);
-                    }
-                }
-            }
+            // This kind works, but with outwards drift. Keep away from it: normal way should work better
+            // for(StellarObject *stellarObject: *objectsInTree){
+            //     if(stellarObject->getType() == GALACTIC_CORE){
+            //         stellarObject->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
+            //         stellarObject->updateVelocity(timestep);
+            //         stellarObject->updatePosition(timestep);
+            //     }
+            //     else{
+            //         stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
+            //         stellarObject->getChildren()->at(0)->setStellarAcceleration(stellarObject->getFutureStellarAcceleration());
+            //         stellarObject->getChildren()->at(0)->updateVelocity(timestep/2);
+            //         stellarObject->getChildren()->at(0)->updatePosition(timestep);
+            //         stellarObject->setFuturePosition(stellarObject->getChildren()->at(0)->getPosition());
+            //     }
+            // }
             break;
         case LOCAL_TREE:
             for(StellarObject *stellarObject: *objectsInTree){
-                // Tree approach - Gets seg fault :(
-                stellarObject->updateLocalAcceleration(this);
-
-                // Direct summation
-                // PositionVector acceleration = PositionVector();
-                // for(StellarObject *object: *objectsInTree){
-                //     long double distance = (object->getPosition()-stellarObject->getPosition()).getLength();
-                //     if(distance!=0){
-                //         // acceleration += (object->getPosition() - stellarObject->getPosition()) * (G * object->getMass() / std::pow(std::sqrt((std::pow(distance, 2) + std::pow(EPSILON, 2))), 3));
-                //         acceleration += (object->getPosition() - stellarObject->getPosition()).normalise() * G * object->getMass() / std::pow(distance, 2);
-                //     }
-                // }
-                // stellarObject->setLocalAcceleration(acceleration);
+                    stellarObject->updateVelocity(timestep/2);
+                    currentlyUpdatingOrDrawingLock->lock();
+                    stellarObject->updatePosition(timestep);
+                    currentlyUpdatingOrDrawingLock->unlock();
             }
+
+            threadNumber = 8;
+            amount = objectsInTree->size()/threadNumber;
+            threads.clear();
+            for(int i=0;i<threadNumber-1;i++){
+                threads.push_back(std::thread (updateLocalAccelerationTreeMultiThread, this, i * amount, i * amount + amount));
+            }
+            threads.push_back(std::thread (updateLocalAccelerationTreeMultiThread, this, (threadNumber-1)*amount, objectsInTree->size()));
+            for(int i=0;i<threadNumber;i++){
+                threads.at(i).join();
+            }
+
             for(StellarObject *stellarObject: *objectsInTree){
-                stellarObject->updateVelocity(timestep);
-                currentlyUpdatingOrDrawingLock->lock();
-                stellarObject->updatePosition(timestep);
-                currentlyUpdatingOrDrawingLock->unlock();
+                stellarObject->updateVelocity(timestep/2);
                 
                 // Debugging purposes
                 // if(stellarObject->getType()==MOON){

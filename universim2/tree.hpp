@@ -11,6 +11,8 @@
 #define LONG_DOUBLE_MAX_VALUE 1.18973e+4932L
 #define LONG_DOUBLE_MIN_VALUE -1.18973e+4932L
 
+#define TREE_APPROACH true
+
 
 class Tree{
 private:
@@ -30,7 +32,7 @@ private:
 public:
     Tree(std::vector<StellarObject*> *objectsInTree, std::mutex *currentlyUpdatingOrDrawingLock);
 
-    void buildTree();
+    void buildTree(long double timestep = 0);
     void destroyTree();
     void update(long double timestep, Renderer *renderer);
     std::vector<StellarObject*> *getObjectsInTree();
@@ -42,5 +44,6 @@ public:
 };
 
 void updateStellarAccelerationTreeMultiThread(Tree *tree, int begin, int end);
+void updateLocalAccelerationTreeMultiThread(Tree *tree, int begin, int end);
 
 #endif
