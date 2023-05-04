@@ -26,6 +26,8 @@ public:
     void setY(long double y);
     void setZ(long double z);
     long double distance(PositionVector position);
+    PositionVector crossProduct(PositionVector vector);
+    long double dotProduct(PositionVector vector);
     // Returns the normalised value of the vector, without changing the vector itself
     PositionVector normalise();
     PositionVector operator + (PositionVector position);

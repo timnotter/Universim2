@@ -32,6 +32,22 @@ int main(int argc, char **argv){
 	int optimalTimeLocalUpdate = 1000000/10;									//In microseconds
 	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
 
+	// Some test
+	// renderer.cameraPlainVector1 = PositionVector(1, 0, 0);
+	// renderer.cameraPlainVector2 = PositionVector(0, 1, 0);
+	// PositionVector crossProduct = renderer.cameraPlainVector1.crossProduct(renderer.cameraPlainVector2);
+	// renderer.cameraDirection = PositionVector(0, 0, 1);
+	// renderer.cameraPlainEquationParameter4 = 0;
+
+	// PositionVector pointA(5, 0, 2);
+	// PositionVector pointB(0, 1, -2);
+
+	// printf("Trying to find point, where the vector from (%s) to (%s) intersects the plane %Lf * x + %Lf * y + %Lf * z = %Lf\n", renderer.cameraPlainVector1.toString(), renderer.cameraPlainVector2.toString(), crossProduct.getX(), crossProduct.getY(), crossProduct.getZ(), renderer.cameraPlainEquationParameter4);
+	// pointA = renderer.findIntersectionWithCameraPlane(pointA, pointB);
+	// printf("Found intersection (%s)\n", pointA.toString());
+	
+	// sleep(10);
+
 	// The window needs a little time to show up properly
 	renderer.drawWaitingScreen();
 	usleep(1000);
@@ -65,7 +81,18 @@ int main(int argc, char **argv){
 		updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
 		// printf("Events and drawing took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, optimalTimeDrawing, (optimalTimeDrawing-updateTime));
         // clock_gettime(CLOCK_MONOTONIC, &prevTime);
-		if((optimalTimeDrawing-updateTime) > 0) usleep(optimalTimeDrawing-updateTime);
+		int difference = optimalTimeDrawing-updateTime;
+		if(difference > 0) {
+			if(difference > 15000){
+				renderer.adjustThreadCount(DECREASE_THREAD_COUNT);
+			}
+			usleep(difference);
+		}
+		else{
+			renderer.adjustThreadCount(INCREASE_THREAD_COUNT);
+			// printf("Difference: %d mics\n", difference);
+		}
+		// printf("Difference: %d\n", difference);
 
         // clock_gettime(CLOCK_MONOTONIC, &currTime);
 		// printf("Sleeptime: %dmics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
@@ -109,13 +136,16 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 		}
 	}
 	// Run the simulation with the appropriate speed
+	struct timespec initialTime;
 	struct timespec prevTime;
 	struct timespec currTime;
 	// int optimalTime = 1000000/20;			//In microseconds
 	int updateTime;
 	int localUpdatesPerStellarUpdate = (TIMESTEP_STELLAR) / (TIMESTEP_LOCAL);
 	localUpdateIsReady->lock();
-	int counter;
+	int stellarUpdateCounter = 0;
+	int loneStarUpdateCounter = 0;
+	clock_gettime(CLOCK_MONOTONIC, &initialTime);
 	while(*isRunning){
 		// printf("running\n");
 		if(*isPaused){
@@ -123,6 +153,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			continue;
 		}
 
+		// This portion is only for testing stellar force calculation
 		if(localUpdatesPerStellarUpdate == 1){
 			for(StellarObject *stellarObject: *allObjects){
 				if(stellarObject->getType() == STARSYSTEM) {
@@ -135,8 +166,6 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			// printf("Current centre of mass of galaxy %s: (%s)\n", galaxies->at(0)->getName(), galaxies->at(0)->getUpdatedCentreOfMass().toString());
 			localUpdateIsReady->unlock();
 			stellarUpdateIsReady->lock();
-			usleep(10);
-			// while(localUpdateIsReady->try_lock()) unlock;				// Make sure other thread gets the lock
 			localUpdateIsReady->lock();
 			stellarUpdateIsReady->unlock();
 			date->incYear(100);
@@ -145,45 +174,70 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 		}
 
 
-		// printf("Not Paused\n");
-		clock_gettime(CLOCK_MONOTONIC, &prevTime);
+		// Loop over all starSystems, build their tree and update them
+		// clock_gettime(CLOCK_MONOTONIC, &prevTime);
 		for(std::vector<StellarObject*> &objects: starSystemsToUpdate){
 			Tree tree(&objects, currentlyUpdatingOrDrawingLock);
-			// printf("Create tree\n");
 			tree.buildTree();
 			tree.update(TIMESTEP_LOCAL, renderer);
 			tree.destroyTree();
-			// printf("Destroyed tree\n");
 		}
-		for(StellarObject *loneStar: loneStars){
-			loneStar->updateVelocity(TIMESTEP_LOCAL);
-			loneStar->updatePosition(TIMESTEP_LOCAL);
-		}
-		for(StellarObject *galacticCore: *galaxies){
-			// ------------------------------------------------ THIS IS SUBOPTIMAL!! REDO ------------------------------------------------
-			galacticCore->updateVelocity(TIMESTEP_LOCAL);
-			galacticCore->updatePosition(TIMESTEP_LOCAL);
-		}
-		date->incSecond(TIMESTEP_LOCAL);
-		// usleep(1000000);
+		// clock_gettime(CLOCK_MONOTONIC, &currTime);
+		// updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
+		// printf("Building and updating tree took %d mics\n", updateTime);
 
-		if(++counter == localUpdatesPerStellarUpdate){
-			counter = 0;
+
+		// Updating all lone stars is expensive (there are many) and not really significant, for their position changes are barely visible, even if close, since they have
+		// no close objects around them -> we only update them every LONESTAR_BACKOFF_AMOUNT normal update.
+		if(++loneStarUpdateCounter == LONESTAR_BACKOFF_AMOUNT){
+			loneStarUpdateCounter = 0;
+			clock_gettime(CLOCK_MONOTONIC, &prevTime);
+			int threadNumber = LOCAL_UPDATE_THREAD_COUNT;
+			int amount = loneStars.size()/threadNumber;
+			std::vector<std::thread> threads;
+			for(int i=0;i<threadNumber-1;i++){
+				threads.push_back(std::thread(updateLoneStarStarsystemMultiThread, &loneStars, i * amount, i * amount + amount, (TIMESTEP_LOCAL * LONESTAR_BACKOFF_AMOUNT)));
+			}
+			threads.push_back(std::thread(updateLoneStarStarsystemMultiThread, &loneStars, (threadNumber-1)*amount, loneStars.size(), (TIMESTEP_LOCAL * LONESTAR_BACKOFF_AMOUNT)));
+			for(int i=0;i<threadNumber;i++){
+				threads.at(i).join();
+			}
+			clock_gettime(CLOCK_MONOTONIC, &currTime);
+			updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
+			// printf("Updating loneStars took %d mics\n", updateTime);
+
+			for(StellarObject *galacticCore: *galaxies){
+				galacticCore->updateVelocity(TIMESTEP_LOCAL * 10);
+				galacticCore->updatePosition(TIMESTEP_LOCAL * 10);
+			}
+		}
+		// Incrementing date
+		date->incSecond(TIMESTEP_LOCAL);
+
+		// If it is time, wait until the stellar force calculation has finished and insert it's values. From then on use the new stellar acceleration
+		if(++stellarUpdateCounter == localUpdatesPerStellarUpdate){
+			stellarUpdateCounter = 0;
 			localUpdateIsReady->unlock();
 			stellarUpdateIsReady->lock();
 			localUpdateIsReady->lock();
 			stellarUpdateIsReady->unlock();
 		}
 
+		// Time keeping and sleeping, such that desired speed is achieved
 		clock_gettime(CLOCK_MONOTONIC, &currTime);
-		updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
+		updateTime = ((1000000000*(currTime.tv_sec-initialTime.tv_sec)+(currTime.tv_nsec-initialTime.tv_nsec))/1000);
 		// printf("Updating took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, *optimalTimeLocalUpdate, (*optimalTimeLocalUpdate-updateTime));
-        // clock_gettime(CLOCK_MONOTONIC, &prevTime);
 		if((*optimalTimeLocalUpdate-updateTime) > 0) usleep(*optimalTimeLocalUpdate-updateTime);
-		// printf("Slept\n");
-
-
+        clock_gettime(CLOCK_MONOTONIC, &initialTime);
 	}	
+}
+
+void updateLoneStarStarsystemMultiThread(std::vector<StellarObject*> *loneStars, int begin, int end, long double timestep){
+	for(int i=begin;i<end;i++){
+		StellarObject *loneStar = loneStars->at(i);
+		loneStar->getChildren()->at(0)->updateVelocity(timestep);
+		loneStar->getChildren()->at(0)->updatePosition(timestep);
+	}
 }
 
 void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, bool *isRunning, Renderer *renderer, std::vector<StellarObject*> *allObjects, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady){
@@ -215,7 +269,7 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 		}
 		clock_gettime(CLOCK_MONOTONIC, &currTime);
 		int updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
-		// printf("Stellar force calculation took %d mics\n", updateTime);
+		printf("Stellar force calculation took %d mics\n", updateTime);
 
 		// Wait until local updates have caught up, swap in new acceleration values
 		localUpdateIsReady->lock();
@@ -224,9 +278,13 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 		}
 		stellarUpdateIsReady->unlock();
 		localUpdateIsReady->unlock();
-		usleep(10);
+		// Make sure the local update thread has picked up the localUpdateIsReady lock
+		while(localUpdateIsReady->try_lock()){
+			localUpdateIsReady->unlock();
+			usleep(10);
+		}
 		stellarUpdateIsReady->lock();
-		// printf("Full update of future values has been done\n");
+		printf("Full update of future values has been done\n");
 	}
 }
 
@@ -234,36 +292,36 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// Initialise all objects
 	galaxies->push_back(new GalacticCore("Sagittarius A*", 1, 1, 0, 0xFFFF00));
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 1.047)); 			// this inclinations is from the solar plan to the galactic plane, thus not of interest
-	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 0.1));
-	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
-    // ADD_PLANET(new Planet("Mercury", 0.3829, 0.055, 0.387098, 0.205630, 7.005*PI/180));
-    // ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180));
-	// ADD_PLANET(new Planet("Earth", 1, 1, 1, 0.0167086, 0));
-    // ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
-    // ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180));
-    // ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
-    // ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
-    // ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180));
-	// // Read file of Jupiters moons
-    // ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180));
-	// // Read file of Saturns moons
-    // ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180));
-	// // Read file of Uranus' moons
-    // ADD_PLANET(new Planet("Neptune", 24622000/terranRadius, 17.147, 30.07, 0.008678, 1.77*PI/180));
-	// // Read file of Neptunes moons
-    // ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180));
-	// ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
+	ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 0.1));
+	ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
+    ADD_PLANET(new Planet("Mercury", 0.3829, 0.055, 0.387098, 0.205630, 7.005*PI/180));
+    ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180));
+	ADD_PLANET(new Planet("Earth", 1, 1, 1, 0.0167086, 0));
+    ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
+    ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180));
+    ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
+    ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
+    ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180));
+	// Read file of Jupiters moons
+    ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180));
+	// Read file of Saturns moons
+    ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180));
+	// Read file of Uranus' moons
+    ADD_PLANET(new Planet("Neptune", 24622000/terranRadius, 17.147, 30.07, 0.008678, 1.77*PI/180));
+	// Read file of Neptunes moons
+    ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180));
+	ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
 
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0, 0));
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
     // ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
     // ADD_MOON(new Moon("Moon", 1, 1, 1, 0, 0));
 
-	ADD_STARSYSTEM(new StarSystem("Solar System", 0.01, 0, 0));
-	ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
+	// ADD_STARSYSTEM(new StarSystem("Solar System", 0.01, 0, 0));
+	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 
 	// Add random stars - currently orbit is still fixed
-	int totalStarsystems = 10;
+	int totalStarsystems = 10000;
 	int threadNumber;
 	int amount;
 	long double characteristicScaleLength = 13000 * lightyear;

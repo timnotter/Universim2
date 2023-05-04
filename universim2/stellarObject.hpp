@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include "positionVector.hpp"
+#include "stellarObjectRenderFace.hpp"
 class StarSystem;
 class Tree;
 
@@ -44,12 +45,17 @@ private:
     int type;
     // Colour of body
     int colour;
+    // Determines wether object shines light or is only reflective
+    bool isShining;
     // Pointer to parent object
     StellarObject *parent;
     // Pointer to home star system - Null in case of object being a galactic center
     StarSystem *homeSystem;
     // Vector with all children
     std::vector<StellarObject*> children;
+
+    // Renderfaces
+    StellarObjectRenderFace renderFaces[6];
 
     // For stellar gravitational computations
     PositionVector oldPosition;
@@ -58,6 +64,9 @@ private:
     PositionVector futurePosition;
     PositionVector futureVelocity;
     PositionVector futureStellarAcceleration;
+
+    // For renderer: before drawing he updates the current position, such that the picture drawn is from one single point in time
+    PositionVector positionAtPointInTime;
 public:
     // Initialisation units are all relativ to reference units: they are converted in constructor
     StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination);
@@ -119,9 +128,12 @@ public:
     PositionVector getOldStellarAcceleration();
     PositionVector getOldVelocity();
     PositionVector getOldPosition();
-
+    StellarObjectRenderFace *getRenderFaces();
+    PositionVector getPositionAtPointInTime();
+    
     void freeObject();
     void updateCentreOfMass();
+    void updatePositionAtPointInTime();
 
     // Make object virtual, needed for dynamic casts into subclasses
     virtual ~StellarObject() = default;

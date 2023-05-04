@@ -125,14 +125,16 @@ void Tree::update(long double timestep, Renderer *renderer){
             // }
             break;
         case LOCAL_TREE:
-            for(StellarObject *stellarObject: *objectsInTree){
-                    stellarObject->updateVelocity(timestep/2);
-                    currentlyUpdatingOrDrawingLock->lock();
-                    stellarObject->updatePosition(timestep);
-                    currentlyUpdatingOrDrawingLock->unlock();
-            }
+            // ----------------------------------------------------------- TODO -----------------------------------------------------------
+            // Leapfrog curiosly does not work here at all
+            // for(StellarObject *stellarObject: *objectsInTree){
+            //         stellarObject->updateVelocity(timestep/2);
+            //         currentlyUpdatingOrDrawingLock->lock();
+            //         stellarObject->updatePosition(timestep);
+            //         currentlyUpdatingOrDrawingLock->unlock();
+            // }
 
-            threadNumber = 8;
+            threadNumber = LOCAL_UPDATE_THREAD_COUNT;
             amount = objectsInTree->size()/threadNumber;
             threads.clear();
             for(int i=0;i<threadNumber-1;i++){
@@ -144,7 +146,12 @@ void Tree::update(long double timestep, Renderer *renderer){
             }
 
             for(StellarObject *stellarObject: *objectsInTree){
-                stellarObject->updateVelocity(timestep/2);
+                // stellarObject->updateVelocity(timestep/2);
+                
+                stellarObject->updateVelocity(timestep);
+                currentlyUpdatingOrDrawingLock->lock();
+                stellarObject->updatePosition(timestep);
+                currentlyUpdatingOrDrawingLock->unlock();
                 
                 // Debugging purposes
                 // if(stellarObject->getType()==MOON){

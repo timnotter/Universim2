@@ -1,5 +1,5 @@
-#ifndef tree_hpp
-#define tree_hpp
+#ifndef TREE_HPP
+#define TREE_HPP
 #include <vector>
 #include "stellarObject.hpp"
 #include "treeCodeNode.hpp"
@@ -12,6 +12,9 @@
 #define LONG_DOUBLE_MIN_VALUE -1.18973e+4932L
 
 #define TREE_APPROACH true
+
+#define STELLAR_UPDATE_THREAD_COUNT 1
+#define LOCAL_UPDATE_THREAD_COUNT 12
 
 
 class Tree{

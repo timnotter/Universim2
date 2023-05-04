@@ -69,6 +69,17 @@ long double PositionVector::distance(PositionVector position){
     return std::sqrt(std::pow(x - position.getX(), 2) + std::pow(y - position.getY(), 2) + std::pow(z - position.getZ(), 2));
 }
 
+PositionVector PositionVector::crossProduct(PositionVector vector){
+    long double newX = y * vector.getZ() - z * vector.getY();
+    long double newY = z * vector.getX() - x * vector.getZ();
+    long double newZ = x * vector.getY() - y * vector.getX();
+    return PositionVector(newX, newY, newZ);
+}
+
+long double PositionVector::dotProduct(PositionVector vector){
+    return (x*vector.getX() + y*vector.getY() + z*vector.getZ());
+}
+
 PositionVector PositionVector::normalise(){
     long double vectorLength = getLength();
     return PositionVector(x/vectorLength, y/vectorLength, z/vectorLength);
@@ -153,6 +164,7 @@ PositionVector PositionVector::Qr(Matrix3d Q){
 
 const char *PositionVector::toString(){
     std::ostringstream outputStream;
+    // outputStream.precision(20);
     outputStream << x << ", " << y << ", " << z;
     vectorString = outputStream.str();
 

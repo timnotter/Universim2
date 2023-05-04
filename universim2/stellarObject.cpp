@@ -16,6 +16,11 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
     this->meanDistance = meanDistance;
     this->eccentricity = eccentricity;
     this->inclination = inclination;
+    isShining = false;
+    
+    for(int i=0;i<6;i++){
+        renderFaces[i].initialise(this);
+    }
 
     oldStellarAcceleration = PositionVector();
 
@@ -26,6 +31,7 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
             this->mass *= sagittariusMass;
             this->meanDistance *= lightyear;
             homeSystem = NULL;
+            isShining = true;
             break;
         case STARSYSTEM:
             // If object is a star system, initialise homeSystem pointer to itself, such that children then can reuse it
@@ -37,6 +43,7 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
             this->radius *= solarRadius;
             this->mass *= solarMass;
             this->meanDistance *= astronomicalUnit;
+            isShining = true;
             break;
         case PLANET:
             this->radius *= terranRadius;
@@ -137,7 +144,7 @@ void StellarObject::place(){
         }
         printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + velocity * mass).toString(), childrenMomentum.toString(), (velocity * mass).toString());
         if((childrenMomentum + velocity * mass) != PositionVector()){
-            printf("Total momentum is not 0, trying again\n");
+            // printf("Total momentum is not 0, trying again\n");
             goto tryAgain;
         }
     }
@@ -529,6 +536,14 @@ PositionVector StellarObject::getOldPosition(){
     return oldPosition;
 }
 
+StellarObjectRenderFace *StellarObject::getRenderFaces(){
+    return renderFaces;
+}
+
+PositionVector StellarObject::getPositionAtPointInTime(){
+    return positionAtPointInTime;
+}
+
 void StellarObject::freeObject(){
     for(StellarObject *child: children){
         child->freeObject();
@@ -552,4 +567,8 @@ void StellarObject::updateCentreOfMass(){
         adjustedCoM += child->getCentreOfMass() * child->getTotalMass();
     }
     centreOfMass = adjustedCoM / totalMass;
+}
+
+void StellarObject::updatePositionAtPointInTime(){
+    positionAtPointInTime = position;
 }

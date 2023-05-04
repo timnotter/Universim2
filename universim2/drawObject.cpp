@@ -1,8 +1,14 @@
 #include <stdio.h>
-#include "drawObject.hpp"
 #include "renderer.hpp"
+#include "point2d.hpp"
 
-DrawObject::DrawObject(int colour, int x1, int y1, double distance, short type){
+DrawObject::DrawObject(double distance, short type){
+    this->distance = distance;
+    this->type = type;
+    children = new std::vector<DrawObject*>();
+}
+
+DrawObject::DrawObject(int colour, long int x1, long int y1, double distance, short type){
     this->colour = colour;
     this->x1 = x1;
     this->y1 = y1;
@@ -10,7 +16,7 @@ DrawObject::DrawObject(int colour, int x1, int y1, double distance, short type){
     this->type = type;
 }
 
-DrawObject::DrawObject(int colour, int x1, int y1, int size, double distance, short type){
+DrawObject::DrawObject(int colour, long int x1, long int y1, int size, double distance, short type){
     this->colour = colour;
     this->x1 = x1;
     this->y1 = y1;
@@ -19,7 +25,7 @@ DrawObject::DrawObject(int colour, int x1, int y1, int size, double distance, sh
     this->type = type;
 }
 
-DrawObject::DrawObject(int colour, int x1, int y1, int x2, int y2, double distance, short type){
+DrawObject::DrawObject(int colour, long int x1, long int y1, long int x2, long int y2, double distance, short type){
     this->colour = colour;
     this->x1 = x1;
     this->y1 = y1;
@@ -29,7 +35,7 @@ DrawObject::DrawObject(int colour, int x1, int y1, int x2, int y2, double distan
     this->type = type;
 }
 
-DrawObject::DrawObject(int colour, int x1, int y1, int x2, int y2, int x3, int y3, double distance, short type){
+DrawObject::DrawObject(int colour, long int x1, long int y1, long int x2, long int y2, long int x3, long int y3, double distance, short type){
     this->colour = colour;
     this->x1 = x1;
     this->y1 = y1;
@@ -41,7 +47,7 @@ DrawObject::DrawObject(int colour, int x1, int y1, int x2, int y2, int x3, int y
     this->type = type;
 }
 
-DrawObject::DrawObject(int colour, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4, double distance, short type){
+DrawObject::DrawObject(int colour, long int x1, long int y1, long int x2, long int y2, long int x3, long int y3, long int x4, long int y4, double distance, short type){
     this->colour = colour;
     this->x1 = x1;
     this->y1 = y1;
@@ -55,7 +61,20 @@ DrawObject::DrawObject(int colour, int x1, int y1, int x2, int y2, int x3, int y
     this->type = type;
 }
 
+void DrawObject::addDrawObject(DrawObject *drawObject){
+    if(type != GROUP){
+        printf("Cannot add DrawObject to Non-Group DrawObject\n");
+        return;
+    }
+    else if(drawObject->type == GROUP){
+        printf("Cannot add Group DrawObject to another Group DrawObject\n");
+        return;
+    }
+    children->push_back(drawObject);
+}
+
 void DrawObject::draw(Renderer *renderer){
+    Point2d points[4];
     switch(type){
             case CIRCLE: 
                 renderer->drawCircle(colour, x1, y1, size*2);
@@ -67,22 +86,39 @@ void DrawObject::draw(Renderer *renderer){
                 renderer->drawRect(colour, x1, y1, x2-x1, y2-y1);
                 break;
             case TRIANGLE:
-                // ----------------------------------------------------------- TODO -----------------------------------------------------------
-                // Draw triangle
+                // printf("Drawing triangle in drawObject (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
+                renderer->drawTriangle(colour, x1, y1, x2, y2, x3, y3);
                 break;
             case POINT:
                 renderer->drawPoint(colour, x1, y1);
                 break;
             case POLYGON:
-                // ----------------------------------------------------------- TODO -----------------------------------------------------------
-                // Draw Polygon
+                // Draw Polygon: we only implement polygons with four corners
+                points[0] = Point2d(x1, y1);
+                points[1] = Point2d(x2, y2);
+                points[2] = Point2d(x3, y3);
+                points[3] = Point2d(x4, y4);
+
+                renderer->drawPolygon(colour, 4, points, true);
+                // printf("Not implemented draw for polygon\n");
                 break;
             case PLUS:
                 renderer->drawLine(colour, x1-1, y1, x1+1, y1);
                 renderer->drawPoint(colour, x1, y1-1);
                 renderer->drawPoint(colour, x1, y1+1);
                 break;
+            case GROUP:
+                // We first have to sort the children
+                // printf("Drawing %ld drawObjects\n", children->size());
+                quicksort(0, children->size(), children, 1, renderer->getRendererThreadCount());
+                for(DrawObject *drawObject: *children){
+                    drawObject->draw(renderer);
+                    delete drawObject;
+                }
+                children->clear();
+                delete children;
+                break;
             default:
-                printf("Not implemented drawObject, namely number %d\n", type);
+                printf("Not implemented drawObject, namely type number %d\n", type);
         }
 }
