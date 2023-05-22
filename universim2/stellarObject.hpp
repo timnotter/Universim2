@@ -12,6 +12,8 @@
 #include <string>
 #include "positionVector.hpp"
 #include "stellarObjectRenderFace.hpp"
+#include "simplexNoise.hpp"
+
 class StarSystem;
 class Tree;
 
@@ -67,6 +69,11 @@ private:
 
     // For renderer: before drawing he updates the current position, such that the picture drawn is from one single point in time
     PositionVector positionAtPointInTime;
+
+    // Noise for the renderer
+    SimplexNoise *surfaceNoise;
+    // Random numbers for noise generation
+    PositionVector randomVector;
 public:
     // Initialisation units are all relativ to reference units: they are converted in constructor
     StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination);
@@ -130,6 +137,8 @@ public:
     PositionVector getOldPosition();
     StellarObjectRenderFace *getRenderFaces();
     PositionVector getPositionAtPointInTime();
+    SimplexNoise *getSurfaceNoise();
+    PositionVector getRandomVector();
     
     void freeObject();
     void updateCentreOfMass();

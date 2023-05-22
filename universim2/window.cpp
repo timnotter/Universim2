@@ -34,15 +34,15 @@ MyWindow::MyWindow(){
 
 void MyWindow::handleEvent(XEvent &event, bool &running, bool &isPaused){
     if(event.type == Expose){
-        std::cout << "Expose event\n";
+        // std::cout << "Expose event\n";
         renderer->draw();
     }
 
     else if(event.type == KeyPress){
         // printf("Key pressed\n");
         switch(event.xkey.keycode){
-            case KEY_ESCAPE: running = false; printf("Escaped program\n"); break;
-            case KEY_SPACE: isPaused = !isPaused; isPaused ? printf("Paused\n") : printf("Unpaused\n"); break;
+            case KEY_ESCAPE: running = false; /*printf("Escaped program\n");*/ break;
+            case KEY_SPACE: isPaused = !isPaused; /*isPaused ? printf("Paused\n") : printf("Unpaused\n");*/ break;
             // Camera movements
             case KEY_K: renderer->moveCamera(FORWARDS, Y_AXIS); break;
             case KEY_I: renderer->moveCamera(BACKWARDS, Y_AXIS); break;
@@ -72,7 +72,7 @@ void MyWindow::handleEvent(XEvent &event, bool &running, bool &isPaused){
             case KEY_PG_UP: renderer->increaseSimulationSpeed(); break;
             case KEY_PG_DOWN: renderer->decreaseSimulationSpeed(); break;
 
-            default: printf("Key number %d was pressed\n", event.xkey.keycode);
+            /*default: printf("Key number %d was pressed\n", event.xkey.keycode);*/
         }
     }
     return;

@@ -11,8 +11,6 @@
 
 // TODO: For background, make array for every pixel and add up brightness?
 
-// TODO ------------------------------------------------------------------------------------ FIX RENDERER
-
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate){
     // printf("Renderer constructor begin\n");
     this->myWindow = myWindow;
@@ -93,17 +91,26 @@ void Renderer::drawObjects(){
 	// struct timespec currTime;
 	// clock_gettime(CLOCK_MONOTONIC, &prevTime);
 
-    // Go through all objects and update their positionAtPointInTime
-    currentlyUpdatingOrDrawingLock->lock();
-    for(StellarObject *stellarObject: *allObjects){
-        stellarObject->updatePositionAtPointInTime();
-    }
-    currentlyUpdatingOrDrawingLock->unlock();
-
-    // Then render all with the positionAtPointInTime
     int threadNumber = rendererThreadCount;
     int amount = allObjects->size()/threadNumber;
     std::vector<std::thread> threads;
+
+    // Go through all objects and update their positionAtPointInTime
+    currentlyUpdatingOrDrawingLock->lock();
+    for(int i=0;i<threadNumber-1;i++){
+        threads.push_back(std::thread (updatePositionAtPointInTimeMultiThread, allObjects, i*amount, amount));
+    }
+    threads.push_back(std::thread (updatePositionAtPointInTimeMultiThread, allObjects, (threadNumber-1)*amount, allObjects->size()-(threadNumber-1)*amount));
+    for(int i=0;i<threadNumber;i++){
+        threads.at(i).join();
+    }
+    currentlyUpdatingOrDrawingLock->unlock();
+    threads.clear();
+    // clock_gettime(CLOCK_MONOTONIC, &currTime);
+    // printf("Updating all positionAtPointInTime: %ld mics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
+    // clock_gettime(CLOCK_MONOTONIC, &prevTime);
+
+    // Then render all with the positionAtPointInTime
     for(int i=0;i<threadNumber-1;i++){
         threads.push_back(std::thread (calculateObjectPositionsMultiThread, i*amount, amount, this, i));
     }
@@ -116,6 +123,7 @@ void Renderer::drawObjects(){
     // clock_gettime(CLOCK_MONOTONIC, &prevTime);
 
     // Then we render close objects seperately
+    // printf("Rendering %ld close objects\n", closeObjects.size());
     for(int i=0;i<closeObjects.size();i++){
         calculateCloseObject(closeObjects[i]->object, closeObjects[i]->distanceNewBasis, closeObjects[i]->size);
         delete closeObjects[i];
@@ -738,7 +746,7 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     float dotProductNormalVector;
     if(object->getType() != GALACTIC_CORE && object->getType() != STAR){
         colour = object->getHomeSystem()->getChildren()->at(0)->getColour();
-        dotProductNormalVector = ((object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - object->getPositionAtPointInTime()).normalise().dotProduct(((cameraPosition + referenceObject->getPositionAtPointInTime()) - object->getPositionAtPointInTime()).normalise()) + 1) / 2;
+        dotProductNormalVector = ((((object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - object->getPositionAtPointInTime()).normalise().dotProduct(((cameraPosition + referenceObject->getPositionAtPointInTime()) - object->getPositionAtPointInTime()).normalise()) + 1) / 2) + 1) / 2;
         // printf("DotProduct for %s is %f\n", object->getName(), dotProductNormalVector);
     }
     // Used such that the "plus" fades into a point
@@ -792,11 +800,17 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
             + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*dotProductNormalVector)) << 8)
             + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
         }
+        originalColour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*dotProductNormalVector)) << 16)
+        + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*dotProductNormalVector)) << 8)
+        + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
     }
     // printf("Colour and size of %s: %d, %f\n", object->getName(), colour, size);
 
+
+    // For dots, lines and plus', we have to decrement the coordinates, else they don't coincide with the triangulation approach (idk why)
     DrawObject *drawObject;
     if(isPoint){
+        x--;y--;
         if(visibleOnScreen(x, y)) {
             drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), POINT);
             dotsToAddOnScreen->push_back(drawObject);
@@ -805,6 +819,7 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         return;
     }
     else if(size<1){
+        x--;y--;
         drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), PLUS);
         dotsToAddOnScreen->push_back(drawObject);
         drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
@@ -821,6 +836,7 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         // calculateCloseObject(object, distanceNewBasis, size, objectsToAddOnScreen);
         return;
     }
+    x--;y--;
     drawObject = new DrawObject(colour, x, y, size, distanceNewBasis.getLength(), CIRCLE);
     objectsToAddOnScreen->push_back(drawObject);
 
@@ -837,7 +853,7 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
     // int updateTime;
     // clock_gettime(CLOCK_MONOTONIC, &beginTime);
 
-    int resolution = std::min(std::max((int)(size), 5), 45);
+    int resolution = std::min(std::max((int)(size), 5), 50);
     // int resolution = std::min(std::max((int)(size/10), 5), 25);
     if(resolution % 2 == 0) resolution++;
     // resolution = 3;
@@ -859,6 +875,16 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
     PositionVector absoluteCameraPosition = cameraPosition + referenceObject->getPositionAtPointInTime();
     if(rendererThreadCount>=6){
         std::vector<std::thread> threads;
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces, X_AXIS, FORWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 1, X_AXIS, BACKWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 2, Y_AXIS, FORWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 3, Y_AXIS, BACKWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 4, Z_AXIS, FORWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 5, Z_AXIS, BACKWARDS, resolution));
+        for(int i=0;i<6;i++){
+            threads.at(i).join();
+        }
+        threads.clear();
         for(int i=0;i<6;i++){
             threads.push_back(std::thread(getRenderTrianglesMultiThread, &(faces[i]), &triangles, absoluteCameraPosition, &trianglesLock));
         }
@@ -869,6 +895,19 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
     }
     else if(rendererThreadCount>=3){
         std::vector<std::thread> threads;
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces, X_AXIS, FORWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 1, X_AXIS, BACKWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 2, Y_AXIS, FORWARDS, resolution));
+        for(int i=0;i<3;i++){
+            threads.at(i).join();
+        }
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 3, Y_AXIS, BACKWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 4, Z_AXIS, FORWARDS, resolution));
+        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 5, Z_AXIS, BACKWARDS, resolution));
+        for(int i=3;i<6;i++){
+            threads.at(i).join();
+        }
+        threads.clear();
         for(int i=0;i<3;i++){
             threads.push_back(std::thread(getRenderTrianglesMultiThread, &(faces[i]), &triangles, absoluteCameraPosition, &trianglesLock));
         }
@@ -881,8 +920,15 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
         for(int i=3;i<6;i++){
             threads.at(i).join();
         }
+        threads.clear();
     }
     else{
+        faces[0].updateRenderFace(X_AXIS, FORWARDS, resolution);
+        faces[1].updateRenderFace(X_AXIS, BACKWARDS, resolution);
+        faces[2].updateRenderFace(Y_AXIS, FORWARDS, resolution);
+        faces[3].updateRenderFace(Y_AXIS, BACKWARDS, resolution);
+        faces[4].updateRenderFace(Z_AXIS, FORWARDS, resolution);
+        faces[5].updateRenderFace(Z_AXIS, BACKWARDS, resolution);
         for(int i=0;i<6;i++){
             faces[i].getRenderTriangles(&triangles, absoluteCameraPosition);
         }
@@ -1177,9 +1223,10 @@ void Renderer::resetCameraOrientation(){
     cameraDirection = PositionVector(-1, 0, 0);
     cameraPlaneVector1 = PositionVector(0, 1, 0);
     cameraPlaneVector2 = PositionVector(0, 0, 1);
-
-    cameraPosition = cameraDirection * -5 * centreObject->getRadius();
-
+    if(centreObject == NULL){
+        centreObject = referenceObject;
+    }
+    cameraPosition = cameraDirection * STANDARD_CAMERA_POSITION;
     transformationMatrixCameraBasis = Matrix3d(cameraPlaneVector1, cameraPlaneVector2, cameraDirection);
     inverseTransformationMatrixCameraBasis = transformationMatrixCameraBasis.transpose();
 }
@@ -1190,22 +1237,22 @@ bool Renderer::visibleOnScreen(int x, int y){
 
 void Renderer::increaseCameraMoveAmount(){
     cameraMoveAmount *= 1.5;
-    if(cameraMoveAmount < astronomicalUnit/2)
-        printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
-    else if(cameraMoveAmount < lightyear/2)
-        printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
-    else
-        printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
+    // if(cameraMoveAmount < astronomicalUnit/2)
+    //     printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
+    // else if(cameraMoveAmount < lightyear/2)
+    //     printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
+    // else
+    //     printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
 }
 
 void Renderer::decreaseCameraMoveAmount(){
     cameraMoveAmount = std::max(cameraMoveAmount / 1.5, (long double) 1.0);
-    if(cameraMoveAmount < astronomicalUnit/2)
-        printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
-    else if(cameraMoveAmount < lightyear/2)
-        printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
-    else
-        printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
+    // if(cameraMoveAmount < astronomicalUnit/2)
+    //     printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
+    // else if(cameraMoveAmount < lightyear/2)
+    //     printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
+    // else
+    //     printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
 }
 
 void Renderer::increaseSimulationSpeed(){
@@ -1234,7 +1281,7 @@ void Renderer::centreParent(){
     }
     referenceObject = centreObject;
     // Centre camera on new centre object
-    cameraPosition = cameraDirection * -5 * centreObject->getRadius();
+    cameraPosition = cameraDirection * STANDARD_CAMERA_POSITION;
     // cameraPosition = cameraDirection * -3 * astronomicalUnit;
     // printf("camera: (%f, %f, %f). Length: %f\n", cameraPosition.getX(), cameraPosition.getY(), cameraPosition.getZ(), cameraPosition.getLength());
 }
@@ -1257,7 +1304,7 @@ void Renderer::centreChild(){
     }
     referenceObject = centreObject;
     // Centre camera on new centre object
-    cameraPosition = cameraDirection * -5 * centreObject->getRadius();
+    cameraPosition = cameraDirection * STANDARD_CAMERA_POSITION;
 }
 
 void Renderer::centreNext(){
@@ -1288,7 +1335,7 @@ void Renderer::centreNext(){
     }
     referenceObject = centreObject;
     // Centre camera on new centre object
-    cameraPosition = cameraDirection * -5 * centreObject->getRadius();
+    cameraPosition = cameraDirection * STANDARD_CAMERA_POSITION;
 }
 
 void Renderer::centrePrevious(){
@@ -1312,7 +1359,7 @@ void Renderer::centrePrevious(){
     }
     referenceObject = centreObject;
     // Centre camera on new centre object
-    cameraPosition = cameraDirection * -5 * centreObject->getRadius();
+    cameraPosition = cameraDirection * STANDARD_CAMERA_POSITION;
 }
 
 void Renderer::centreNextStarSystem(){
@@ -1384,7 +1431,7 @@ void Renderer::centreNearest(){
     centreObject = nearest;
     referenceObject = centreObject;
 
-    cameraPosition = cameraDirection * -5 * centreObject->getRadius();
+    cameraPosition = cameraDirection * STANDARD_CAMERA_POSITION;
 }
 
 void Renderer::toggleCentre(){
@@ -1437,7 +1484,7 @@ void Renderer::adjustThreadCount(int8_t adjustment){
         return;
     }
     rendererThreadCount = std::min(RENDERER_MAX_THREAD_COUNT, std::max(1, rendererThreadCount + adjustment));
-    printf("Adjusted rendererThreadCount to %d\n", rendererThreadCount);
+    // printf("Adjusted rendererThreadCount to %d\n", rendererThreadCount);
 }
 
 int Renderer::getWindowWidth(){
@@ -1488,20 +1535,27 @@ void calculateObjectPositionsMultiThread(int start, int amount, Renderer *render
     renderer->addDotsOnScreen(&dotsToAddOnScreen);
 }
 
+void updatePositionAtPointInTimeMultiThread(std::vector<StellarObject*> *allObjects, int start, int amount){
+    for(int i=start;i<start+amount;i++){
+        allObjects->at(i)->updatePositionAtPointInTime();
+    }
+}
+
 void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject *object, std::vector<RenderTriangle*> *triangles, DrawObject *drawObject, int start, int amount, std::mutex *drawObjectLock){
     std::vector<DrawObject*> drawObjectsToAdd;
     // printf("Arrived in multithread function with start: %d, amount: %d\n", start, amount);
     // struct timespec prevTime;
 	// struct timespec currTime;
     // clock_gettime(CLOCK_MONOTONIC, &prevTime);
+
+    PositionVector cameraPosition = renderer->getCameraPosition();
+    Matrix3d inverseTransformationMatrixCameraBasis = renderer->getInverseTransformationMatrixCameraBasis();
+    PositionVector absoluteCameraPosition = renderer->getReferenceObject()->getPositionAtPointInTime() + cameraPosition;
+
     for(int i=start;i<start+amount;i++){
         RenderTriangle* triangle = triangles->at(i);
         // ----------------------------------------------------- TODO -----------------------------------------------------
         // Check here if normal vector is pointing in the same distance as the camera, then ignore the triangle
-
-        PositionVector cameraPosition = renderer->getCameraPosition();
-        Matrix3d inverseTransformationMatrixCameraBasis = renderer->getInverseTransformationMatrixCameraBasis();
-        PositionVector absoluteCameraPosition = renderer->getReferenceObject()->getPositionAtPointInTime() + cameraPosition;
 
         PositionVector distanceMidPoint = triangle->getMidPoint() + object->getPositionAtPointInTime() - absoluteCameraPosition;
         PositionVector distanceMidPointNewBasis = inverseTransformationMatrixCameraBasis * distanceMidPoint;
@@ -1518,9 +1572,18 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
             continue;
         }
 
+        // If all three points are outside from the perspective of one of the edges, we can ignore it
+        if((distanceP1NewBasis.getX() >= std::abs(distanceP1NewBasis.getZ()) && distanceP2NewBasis.getX() >= std::abs(distanceP2NewBasis.getZ()) && distanceP3NewBasis.getX() >= std::abs(distanceP3NewBasis.getZ())) ||
+        (distanceP1NewBasis.getY() >= std::abs(distanceP1NewBasis.getZ()) && distanceP2NewBasis.getY() >= std::abs(distanceP2NewBasis.getZ()) && distanceP3NewBasis.getY() >= std::abs(distanceP3NewBasis.getZ())) ||
+        (distanceP1NewBasis.getX() <= -1 * std::abs(distanceP1NewBasis.getZ()) && distanceP2NewBasis.getX() <= -1 * std::abs(distanceP2NewBasis.getZ()) && distanceP3NewBasis.getX() <= -1 * std::abs(distanceP3NewBasis.getZ())) ||
+        (distanceP1NewBasis.getY() <= -1 * std::abs(distanceP1NewBasis.getZ()) && distanceP2NewBasis.getY() <= -1 * std::abs(distanceP2NewBasis.getZ()) && distanceP3NewBasis.getY() <= -1 * std::abs(distanceP3NewBasis.getZ()))){
+            continue;
+        }
+
         // ------------------------------------------------------------------- TODO -------------------------------------------------------------------
         // Make additional checks to rule out anomalies
         // Cut down lines going behind the camera
+        // Mabe?
 
         bool p1InFront = distanceP1NewBasis.getZ() >= 0;
         bool p2InFront = distanceP2NewBasis.getZ() >= 0;
@@ -1557,23 +1620,24 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
                     }
                 }
             }
-            for(StellarObject *child: *(object->getChildren())){
-                // If the child is behind the object, we ignore it
-                if(((object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - object->getPositionAtPointInTime()).dotProduct(child->getPositionAtPointInTime() - object->getPositionAtPointInTime())) <= 0){
-                    continue;
-                }
-                Plane childPlane = Plane(child->getPositionAtPointInTime(), object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - (triangle->getMidPoint() + object->getPositionAtPointInTime()));
-                PositionVector intersection = childPlane.findIntersectionWithLine(object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime(), (triangle->getMidPoint() + object->getPositionAtPointInTime()));
-                long double distanceIntersectionChild = (child->getPositionAtPointInTime() - intersection).getLength(); 
+            // We don't go trough all children, this is way to expensive and solar eclipses way to rare for that
+            // for(StellarObject *child: *(object->getChildren())){
+            //     // If the child is behind the object, we ignore it
+            //     if(((object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - object->getPositionAtPointInTime()).dotProduct(child->getPositionAtPointInTime() - object->getPositionAtPointInTime())) <= 0){
+            //         continue;
+            //     }
+            //     Plane childPlane = Plane(child->getPositionAtPointInTime(), object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - (triangle->getMidPoint() + object->getPositionAtPointInTime()));
+            //     PositionVector intersection = childPlane.findIntersectionWithLine(object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime(), (triangle->getMidPoint() + object->getPositionAtPointInTime()));
+            //     long double distanceIntersectionChild = (child->getPositionAtPointInTime() - intersection).getLength(); 
                 
-                // printf("Checking if %s is in front of %s. Relative distance of intersection is %Lf\n", child->getName(), object->getName(), distanceIntersectionChild/child->getRadius());
-                if(distanceIntersectionChild <= 0.5 * child->getRadius()){
-                    dotProductNormalVector = 0;
-                }
-                else if(distanceIntersectionChild <= child->getRadius()){
-                    dotProductNormalVector *= ((distanceIntersectionChild/child->getRadius()) - 0.5) * 2;
-                }
-            }
+            //     // printf("Checking if %s is in front of %s. Relative distance of intersection is %Lf\n", child->getName(), object->getName(), distanceIntersectionChild/child->getRadius());
+            //     if(distanceIntersectionChild <= 0.5 * child->getRadius()){
+            //         dotProductNormalVector = 0;
+            //     }
+            //     else if(distanceIntersectionChild <= child->getRadius()){
+            //         dotProductNormalVector *= ((distanceIntersectionChild/child->getRadius()) - 0.5) * 2;
+            //     }
+            // }
         }
         else{
             // We slightly alter colour if the normal vector of the triangles point into the wrong direction from
@@ -1607,6 +1671,10 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
         drawObject->addDrawObject(drawObjectToAdd);
     }
     drawObjectLock->unlock();
+}
+
+void updateRenderFaceMultiThread(StellarObjectRenderFace *face, short axis, short direction, short resolution){
+    face->updateRenderFace(axis, direction, resolution);
 }
 
 void getRenderTrianglesMultiThread(StellarObjectRenderFace *face, std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition, std::mutex *trianglesLock){

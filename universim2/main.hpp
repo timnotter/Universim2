@@ -26,3 +26,4 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock);
 void updateLoneStarStarsystemMultiThread(std::vector<StellarObject*> *loneStars, int begin, int end, long double timestep);
 void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock, std::function<long double(double)> densityFunction);
+void readMoonFile(std::string fileLocation, StellarObject *parent);

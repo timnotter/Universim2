@@ -24,7 +24,7 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
 
     oldStellarAcceleration = PositionVector();
 
-    // Correct all units in relation to respective reference units
+    // Correct all units in relation to respective reference units and create noise
     switch(type){
         case GALACTIC_CORE:
             this->radius *= sagittariusRadius;
@@ -32,35 +32,43 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
             this->meanDistance *= lightyear;
             homeSystem = NULL;
             isShining = true;
+            surfaceNoise = new SimplexNoise(0, 1, 2, 0.5);
             break;
         case STARSYSTEM:
             // If object is a star system, initialise homeSystem pointer to itself, such that children then can reuse it
             homeSystem = static_cast<StarSystem*>(this);
             // printf("Home system of %s has been set to %p\n", getName(), homeSystem);
             this->meanDistance *= distanceSagittariusSun;
+            surfaceNoise = new SimplexNoise(1, 1, 2, 0.5);
             break;
         case STAR:
             this->radius *= solarRadius;
             this->mass *= solarMass;
             this->meanDistance *= astronomicalUnit;
             isShining = true;
+            surfaceNoise = new SimplexNoise(0, 1, 2, 0.5);
             break;
         case PLANET:
             this->radius *= terranRadius;
             this->mass *= terranMass;
             this->meanDistance *= astronomicalUnit;
+            surfaceNoise = new SimplexNoise(1, 1, 2, 0.5);
             break;
         case MOON:
             this->radius *= lunarRadius;
             this->mass *= lunarMass;
             this->meanDistance *= distanceEarthMoon;
+            surfaceNoise = new SimplexNoise(1, 1, 2, 0.5);
             break;
         case COMET:
             this->radius *= 1;
             this->mass *= 1;
             this->meanDistance *= astronomicalUnit;
+            surfaceNoise = new SimplexNoise(2, 2, 2, 0.5);
             break;
     }
+    
+    randomVector = PositionVector((long double)rand() / (RAND_MAX/25), (long double)rand() / (RAND_MAX/25), (long double)rand() / (RAND_MAX/25));
 }
 
 StellarObject::StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int colour) : StellarObject(name, type, radius, mass, meanDistance, eccentricity, inclination){
@@ -142,7 +150,7 @@ void StellarObject::place(){
             // printf("childrenMomentum * -(1/mass): (%s), adjustement: (%s)\n", (childrenMomentum * -(1/mass)).toString(), ((position / position.getLength()) * (G * totalMass / position.getLength())).toString());
             // printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
         }
-        printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + velocity * mass).toString(), childrenMomentum.toString(), (velocity * mass).toString());
+        // printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + velocity * mass).toString(), childrenMomentum.toString(), (velocity * mass).toString());
         if((childrenMomentum + velocity * mass) != PositionVector()){
             // printf("Total momentum is not 0, trying again\n");
             goto tryAgain;
@@ -544,12 +552,21 @@ PositionVector StellarObject::getPositionAtPointInTime(){
     return positionAtPointInTime;
 }
 
+SimplexNoise *StellarObject::getSurfaceNoise(){
+    return surfaceNoise;
+}
+
+PositionVector StellarObject::getRandomVector(){
+    return randomVector;
+}
+
 void StellarObject::freeObject(){
     for(StellarObject *child: children){
         child->freeObject();
         delete child;
     }
     if(name != NULL){
+        delete surfaceNoise;
         delete name;
     }
 }

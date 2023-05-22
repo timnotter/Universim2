@@ -40,6 +40,8 @@
 #define TRANS_BLUE_COL 0x0000FF01
 #define LASTPOS_INIT_NUM 1000000000000000000.0
 
+#define STANDARD_CAMERA_POSITION -1 * std::min(std::max(2 * centreObject->getRadius(), solarRadius/5), astronomicalUnit)
+
 static int debug = 0;
 
 typedef struct CloseObject_s{
@@ -50,6 +52,8 @@ typedef struct CloseObject_s{
 
 // Functions for multithreading
 void calculateObjectPositionsMultiThread(int start, int amount, Renderer *renderer, int id);
+void updatePositionAtPointInTimeMultiThread(std::vector<StellarObject*> *allObjects, int start, int amount);
+void updateRenderFaceMultiThread(StellarObjectRenderFace *face, short axis, short direction, short resolution);
 void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject *object, std::vector<RenderTriangle*> *triangles, DrawObject *drawObject, int start, int amount, std::mutex *drawObjectLock);
 void getRenderTrianglesMultiThread(StellarObjectRenderFace *face, std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition, std::mutex *trianglesLock);
 
