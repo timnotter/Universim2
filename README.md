@@ -2,6 +2,8 @@
 This is an unfinished version of a galaxy simulator, written in C++ on Linux. 
 The renderer is written from scratch, only using the X11 library to display everything on screen
 
+The exe is under construction but not ready yet
+
 Controls:
 "escape": Close program. 
 "space": Pause/Unpause simulation. 
