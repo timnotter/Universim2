@@ -820,10 +820,14 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     }
     else if(size<1){
         x--;y--;
+        // drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), PLUS);
+        // dotsToAddOnScreen->push_back(drawObject);
+        // drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
+        // dotsToAddOnScreen->push_back(drawObject);
         drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), PLUS);
-        dotsToAddOnScreen->push_back(drawObject);
+        objectsToAddOnScreen->push_back(drawObject);
         drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
-        dotsToAddOnScreen->push_back(drawObject);
+        objectsToAddOnScreen->push_back(drawObject);
         return;
     }
     else if(size > 3){
@@ -853,7 +857,7 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
     // int updateTime;
     // clock_gettime(CLOCK_MONOTONIC, &beginTime);
 
-    int resolution = std::min(std::max((int)(size), 5), 50);
+    int resolution = std::min(std::max((int)(size), 5), 200);
     // int resolution = std::min(std::max((int)(size/10), 5), 25);
     if(resolution % 2 == 0) resolution++;
     // resolution = 3;

@@ -84,7 +84,7 @@ void StellarObjectRenderFace::updateRenderFace(short axis, short direction, shor
                 noise = 1;
             }
             else{
-                noise = 1 + ((owner->getSurfaceNoise()->fractal(3, normalisation.getX() + owner->getRandomVector().getX(), normalisation.getY() + owner->getRandomVector().getY(), normalisation.getZ() + owner->getRandomVector().getZ()))) / 10 / (std::max(0.50L, owner->getRadius()/(terranRadius/10)));
+                noise = 1 + ((owner->getSurfaceNoise()->fractal(3, normalisation.getX() + owner->getRandomVector().getX(), normalisation.getY() + owner->getRandomVector().getY(), normalisation.getZ() + owner->getRandomVector().getZ()))) / 10 / (std::max(0.50L, owner->getRadius()/(terranRadius/10)))/3;
             }
             // if(i == j){
             //     printf("%s i = %d - noise: %f\n", owner->getName(), i, noise);
