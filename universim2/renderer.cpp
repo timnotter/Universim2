@@ -857,7 +857,7 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
     // int updateTime;
     // clock_gettime(CLOCK_MONOTONIC, &beginTime);
 
-    int resolution = std::min(std::max((int)(size), 5), 200);
+    int resolution = std::min(std::max((int)(size), 5), MAX_TRIANGULATION_RESOLUTION);
     // int resolution = std::min(std::max((int)(size/10), 5), 25);
     if(resolution % 2 == 0) resolution++;
     // resolution = 3;

@@ -27,8 +27,12 @@ private:
     PositionVector velocity;
     // Acceleration from different starsystems: reused for many times because of little change in them
     PositionVector stellarAcceleration;
-    // Acceleration from bodies in own system and other near body: recalculated every tick
+    // Acceleration from bodies in own system and other near body: recalculated almost every tick
     PositionVector localAcceleration;
+    // Counts the number of ticks that happened since the last calculation of the localAcceleration
+    long localAccelerationLifeTime;
+    // Stores the current maximum lifeTime of the localAcceleration. After this, the value definitely has to be recalculated
+    long localAccelerationMaxLifeTime;
     // Mass of object - in case of starsystem mass of all stars combined
     long double mass;
     // Total mass contained in respective system
@@ -74,6 +78,8 @@ private:
     SimplexNoise *surfaceNoise;
     // Random numbers for noise generation
     PositionVector randomVector;
+
+
 public:
     // Initialisation units are all relativ to reference units: they are converted in constructor
     StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination);
@@ -87,6 +93,7 @@ public:
     void updateStellarAcceleration(Tree *tree);
     void updateLocalAcceleration(Tree *tree);
     void updateNewStellarValues();
+    void updateStellarAccelerationMaxLifeTime();
     void addChild(StellarObject *child);
     void calculateTotalMass();
     void calculateCentreOfMass();
@@ -139,6 +146,7 @@ public:
     PositionVector getPositionAtPointInTime();
     SimplexNoise *getSurfaceNoise();
     PositionVector getRandomVector();
+    long getLocalAccelerationMaxLifeTime();
     
     void freeObject();
     void updateCentreOfMass();

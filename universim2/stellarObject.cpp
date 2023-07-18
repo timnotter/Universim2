@@ -16,6 +16,9 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
     this->meanDistance = meanDistance;
     this->eccentricity = eccentricity;
     this->inclination = inclination;
+    localAccelerationLifeTime = 0;
+    // Initialised as -1, such that in the first iteration the localAccelerationLifeTime is smaller than the maxLifeTime
+    localAccelerationMaxLifeTime = -1;
     isShining = false;
     
     for(int i=0;i<6;i++){
@@ -285,8 +288,20 @@ void StellarObject::updateStellarAcceleration(Tree *tree){
 }
 
 void StellarObject::updateLocalAcceleration(Tree *tree){
-    // Calculate acceleration from local stellar objects - within system or nearby
-    localAcceleration = tree->getRoot()->calculateAcceleration(this);
+    // If the maxLifeTime is smaller than the current lifeTime, we recalculate
+    if(localAccelerationMaxLifeTime <= localAccelerationLifeTime){
+        // Calculate acceleration from local stellar objects - within system or nearby
+        localAcceleration = tree->getRoot()->calculateAcceleration(this);
+        localAccelerationLifeTime = 0;
+        updateStellarAccelerationMaxLifeTime();
+        if(children.size() >= 1){
+            localAccelerationMaxLifeTime = std::min(localAccelerationMaxLifeTime, children[0]->getLocalAccelerationMaxLifeTime());
+        }
+    }
+    localAccelerationLifeTime++;
+
+    // Old simpler but more accurate way
+    // localAcceleration = tree->getRoot()->calculateAcceleration(this);
 }
 
 void StellarObject::updateNewStellarValues(){
@@ -311,6 +326,22 @@ void StellarObject::updateNewStellarValues(){
     // if(type == STARSYSTEM){
     //     oldPosition = getUpdatedCentreOfMass();
     // }
+}
+
+void StellarObject::updateStellarAccelerationMaxLifeTime(){
+    // Updates the localAccelerationMaxLifeTime by assuming a circular orbit with the current distance and speed 
+    // and taking sqrt of the period of the orbit as the new maxLifeTime
+    if(type == STAR){
+        localAccelerationMaxLifeTime = 100;
+        return;
+    }
+    long double approximatedPeriodInDays = 2 * (position.distance(parent->getPosition())) / (velocity.distance(parent->getVelocity())) / (60*60*24) * PI;
+    // localAccelerationMaxLifeTime = std::ceil(std::sqrt(approximatedPeriodInDays));
+    if(approximatedPeriodInDays<=1)
+        localAccelerationMaxLifeTime = 1;
+    else
+        localAccelerationMaxLifeTime = std::ceil(approximatedPeriodInDays / (std::log2(approximatedPeriodInDays) + 1));
+    // printf("%s: localAccelerationMaxLifeTime = %ld. Period: %Lf\n", getName(), localAccelerationMaxLifeTime, approximatedPeriodInDays);
 }
 
 void StellarObject::addChild(StellarObject *child){
@@ -558,6 +589,10 @@ SimplexNoise *StellarObject::getSurfaceNoise(){
 
 PositionVector StellarObject::getRandomVector(){
     return randomVector;
+}
+
+long StellarObject::getLocalAccelerationMaxLifeTime(){
+    return localAccelerationMaxLifeTime;
 }
 
 void StellarObject::freeObject(){

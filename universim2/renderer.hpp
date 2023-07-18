@@ -40,6 +40,8 @@
 #define TRANS_BLUE_COL 0x0000FF01
 #define LASTPOS_INIT_NUM 1000000000000000000.0
 
+#define MAX_TRIANGULATION_RESOLUTION 50
+
 #define STANDARD_CAMERA_POSITION -1 * std::min(std::max(2 * centreObject->getRadius(), solarRadius/5), astronomicalUnit)
 
 static int debug = 0;

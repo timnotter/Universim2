@@ -33,7 +33,7 @@ void Tree::buildTree(long double timestep){
     root = new TreeCodeNode(objectsInTree);
     clock_gettime(CLOCK_MONOTONIC, &currTime);
     updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
-    printf("Building tree took %d mics\n", updateTime);
+    // printf("Building tree took %d mics\n", updateTime);
     // printf("Tree builder end\n");
 }
 
@@ -182,8 +182,8 @@ void Tree::update(long double timestep, Renderer *renderer){
             }
             // sleep(1);
             clock_gettime(CLOCK_MONOTONIC, &currTime);
-            updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
-            printf("Updating local tree took %d mics\n", updateTime);
+            // updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
+            // printf("Updating local tree took %d mics\n", updateTime);
             break;
     }
 }
