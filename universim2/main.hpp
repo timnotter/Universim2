@@ -21,6 +21,8 @@
 
 #define LONESTAR_BACKOFF_AMOUNT 100
 
+#define MICROSECONDS_PER_FRAME 1000000/20
+
 void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, bool *isRunning, bool *isPaused, Date *date, int *optimalTimeLocalUpdate, Renderer *renderer, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady);
 void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, bool *isRunning, Renderer *renderer, std::vector<StellarObject*> *allObjects, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady);
 void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock);

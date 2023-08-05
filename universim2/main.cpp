@@ -1,5 +1,5 @@
 #include <iostream>
-#include <unistd.h>
+#include <chrono>
 #include <thread>
 #include <fstream>
 #include "main.hpp"
@@ -29,29 +29,14 @@ int main(int argc, char **argv){
 	std::mutex currentlyUpdatingOrDrawingLock;
 	std::mutex localUpdateIsReady;
 	std::mutex stellarUpdateIsReady;
-	const int optimalTimeDrawing = 1000000/20;									//In microseconds
-	int optimalTimeLocalUpdate = 1000000/10;									//In microseconds
+	const int optimalTimeDrawing = MICROSECONDS_PER_FRAME;									//In microseconds
+	int optimalTimeLocalUpdate = MICROSECONDS_PER_FRAME * 2;								//In microseconds - I don't know why it has this value
 	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
 
-	// Some test
-	// renderer.cameraPlainVector1 = PositionVector(1, 0, 0);
-	// renderer.cameraPlainVector2 = PositionVector(0, 1, 0);
-	// PositionVector crossProduct = renderer.cameraPlainVector1.crossProduct(renderer.cameraPlainVector2);
-	// renderer.cameraDirection = PositionVector(0, 0, 1);
-	// renderer.cameraPlainEquationParameter4 = 0;
 
-	// PositionVector pointA(5, 0, 2);
-	// PositionVector pointB(0, 1, -2);
-
-	// printf("Trying to find point, where the vector from (%s) to (%s) intersects the plane %Lf * x + %Lf * y + %Lf * z = %Lf\n", renderer.cameraPlainVector1.toString(), renderer.cameraPlainVector2.toString(), crossProduct.getX(), crossProduct.getY(), crossProduct.getZ(), renderer.cameraPlainEquationParameter4);
-	// pointA = renderer.findIntersectionWithCameraPlane(pointA, pointB);
-	// printf("Found intersection (%s)\n", pointA.toString());
-	
-	// sleep(10);
-
-	// The window needs a little time to show up properly
+	// The window needs a little time to show up properly, don't know why
 	renderer.drawWaitingScreen();
-	usleep(1000);
+	std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	renderer.drawWaitingScreen();
 	// printf("Waiting screen drawn\n");
 
@@ -87,7 +72,7 @@ int main(int argc, char **argv){
 			if(difference > 15000){
 				renderer.adjustThreadCount(DECREASE_THREAD_COUNT);
 			}
-			usleep(difference);
+			std::this_thread::sleep_for(std::chrono::microseconds(difference));
 		}
 		else{
 			renderer.adjustThreadCount(INCREASE_THREAD_COUNT);
@@ -150,7 +135,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 	while(*isRunning){
 		// printf("running\n");
 		if(*isPaused){
-			usleep(1000000/24);
+			std::this_thread::sleep_for(std::chrono::microseconds(MICROSECONDS_PER_FRAME));
 			continue;
 		}
 
@@ -170,7 +155,6 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			localUpdateIsReady->lock();
 			stellarUpdateIsReady->unlock();
 			date->incYear(100);
-			// usleep(100);
 			continue;
 		}
 
@@ -228,7 +212,8 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 		clock_gettime(CLOCK_MONOTONIC, &currTime);
 		updateTime = ((1000000000*(currTime.tv_sec-initialTime.tv_sec)+(currTime.tv_nsec-initialTime.tv_nsec))/1000);
 		// printf("Updating took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, *optimalTimeLocalUpdate, (*optimalTimeLocalUpdate-updateTime));
-		if((*optimalTimeLocalUpdate-updateTime) > 0) usleep(*optimalTimeLocalUpdate-updateTime);
+		if((*optimalTimeLocalUpdate-updateTime) > 0)
+			std::this_thread::sleep_for(std::chrono::microseconds(*optimalTimeLocalUpdate-updateTime));
         clock_gettime(CLOCK_MONOTONIC, &initialTime);
 	}	
 }
@@ -282,7 +267,7 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 		// Make sure the local update thread has picked up the localUpdateIsReady lock
 		while(localUpdateIsReady->try_lock()){
 			localUpdateIsReady->unlock();
-			usleep(10);
+			std::this_thread::sleep_for(std::chrono::microseconds(10));
 		}
 		stellarUpdateIsReady->lock();
 		printf("Full update of future values has been done\n");

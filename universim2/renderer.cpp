@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <cmath>
 #include <thread>
-#include <unistd.h>
 #include "renderer.hpp"
 #include "star.hpp"
 #include "point2d.hpp"
