@@ -103,7 +103,7 @@ void Star::generateAndDetermineClassification(){
 
     // Initialise random number generator
     struct timespec currTime;
-    clock_gettime(CLOCK_MONOTONIC, &currTime);
+    std::timespec_get(&currTime, 0);
     srand(currTime.tv_nsec);
 
     // We generate a number between 0 and 1
@@ -249,7 +249,7 @@ void Star::generateMass(){
 
     // Initialise random number generator
     struct timespec currTime;
-    clock_gettime(CLOCK_MONOTONIC, &currTime);
+    std::timespec_get(&currTime, 0);
     srand(currTime.tv_nsec);
 
     // We generate a number between 0 and 1, the square will determine the total mass - to model somewhat of a bias towards smaller objects

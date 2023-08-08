@@ -66,14 +66,9 @@ private:
     int tempY;
 
 public:
+    // These functions are platform dependent
     MyWindow();
     
-    void setRenderer(Renderer *renderer);
-
-    int getWindowWidth();
-    int getWindowHeight();
-
-    // These functions are platform dependent
     void drawBackground(int colour);
     void endDrawing();
 
@@ -90,6 +85,10 @@ public:
     void closeWindow();
 
     // These functions should be platform independent
+    void setRenderer(Renderer *renderer);
+
+    int getWindowWidth();
+    int getWindowHeight();
     Point2d calculateEdgePointWithNoneVisible(int x1, int y1, int x2, int y2);
     Point2d calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2);
     int drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible);

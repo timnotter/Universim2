@@ -1,5 +1,3 @@
-#include <unistd.h>
-#include <time.h>
 #include <stdio.h>
 #include <string>
 #include "stellarObject.hpp"
@@ -87,7 +85,7 @@ void StellarObject::place(){
 
     // Initialise random object with current time
     struct timespec currTime;
-    clock_gettime(CLOCK_MONOTONIC, &currTime);
+    std::timespec_get(&currTime, 0);
     srand(currTime.tv_nsec);
 
     // First place center of mass of system at appropriate place, then place children at appropriate places,

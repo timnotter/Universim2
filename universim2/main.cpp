@@ -2,6 +2,8 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
+#include <time.h>
+#include <ctime>
 #include "main.hpp"
 #include "window.hpp"
 // #include "renderer.hpp"
@@ -52,7 +54,7 @@ int main(int argc, char **argv){
 	std::thread *stellarUpdater = new std::thread(stellarUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &isRunning, &renderer, &allObjects, &localUpdateIsReady, &stellarUpdateIsReady);
 	while(isRunning){
 		// Handle events
-        clock_gettime(CLOCK_MONOTONIC, &prevTime);
+		std::timespec_get(&prevTime, TIME_UTC);
 		// while(XPending(myWindow.getDisplay())){
         //     XNextEvent(myWindow.getDisplay(), myWindow.getEvent());
         //     myWindow.handleEvent(*(myWindow.getEvent()), isRunning, isPaused);
@@ -64,7 +66,7 @@ int main(int argc, char **argv){
 
 
 		renderer.draw();
-        clock_gettime(CLOCK_MONOTONIC, &currTime);
+		std::timespec_get(&currTime, 0);
 		updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
 		// printf("Events and drawing took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, optimalTimeDrawing, (optimalTimeDrawing-updateTime));
         // clock_gettime(CLOCK_MONOTONIC, &prevTime);
@@ -132,7 +134,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 	localUpdateIsReady->lock();
 	int stellarUpdateCounter = 0;
 	int loneStarUpdateCounter = 0;
-	clock_gettime(CLOCK_MONOTONIC, &initialTime);
+	std::timespec_get(&initialTime, 0);
 	while(*isRunning){
 		// printf("running\n");
 		if(*isPaused){
@@ -177,7 +179,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 		// no close objects around them -> we only update them every LONESTAR_BACKOFF_AMOUNT normal update.
 		if(++loneStarUpdateCounter == LONESTAR_BACKOFF_AMOUNT){
 			loneStarUpdateCounter = 0;
-			clock_gettime(CLOCK_MONOTONIC, &prevTime);
+			std::timespec_get(&prevTime, 0);
 			int threadNumber = LOCAL_UPDATE_THREAD_COUNT;
 			int amount = loneStars.size()/threadNumber;
 			std::vector<std::thread> threads;
@@ -188,7 +190,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			for(int i=0;i<threadNumber;i++){
 				threads.at(i).join();
 			}
-			clock_gettime(CLOCK_MONOTONIC, &currTime);
+			std::timespec_get(&currTime, 0);
 			updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
 			// printf("Updating loneStars took %d mics\n", updateTime);
 
@@ -210,12 +212,12 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 		}
 
 		// Time keeping and sleeping, such that desired speed is achieved
-		clock_gettime(CLOCK_MONOTONIC, &currTime);
+		std::timespec_get(&currTime, 0);
 		updateTime = ((1000000000*(currTime.tv_sec-initialTime.tv_sec)+(currTime.tv_nsec-initialTime.tv_nsec))/1000);
 		// printf("Updating took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, *optimalTimeLocalUpdate, (*optimalTimeLocalUpdate-updateTime));
 		if((*optimalTimeLocalUpdate-updateTime) > 0)
 			std::this_thread::sleep_for(std::chrono::microseconds(*optimalTimeLocalUpdate-updateTime));
-        clock_gettime(CLOCK_MONOTONIC, &initialTime);
+        std::timespec_get(&initialTime, 0);
 	}	
 }
 
@@ -247,14 +249,14 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 	stellarUpdateIsReady->lock();
 	while(*isRunning){
 		// --------------------------------------------------------- TODO --------------------------------------------------------- Acceleration doesn't work
-		clock_gettime(CLOCK_MONOTONIC, &prevTime);
+		std::timespec_get(&prevTime, 0);
 		for(std::vector<StellarObject*> &galaxy: galaxiesToUpdate){
 			Tree tree(&galaxy, currentlyUpdatingOrDrawingLock);
 			tree.buildTree(TIMESTEP_STELLAR);
 			tree.update(TIMESTEP_STELLAR, renderer);
 			tree.destroyTree();
 		}
-		clock_gettime(CLOCK_MONOTONIC, &currTime);
+		std::timespec_get(&currTime, 0);
 		int updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
 		printf("Stellar force calculation took %d mics\n", updateTime);
 

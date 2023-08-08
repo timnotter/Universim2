@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <vector>
-#include <unistd.h>
 #include <thread>
 #include "tree.hpp"
 #include "constants.hpp"
@@ -23,7 +22,7 @@ void Tree::buildTree(long double timestep){
     struct timespec prevTime;
 	struct timespec currTime;
 	int updateTime;
-    clock_gettime(CLOCK_MONOTONIC, &prevTime);
+    std::timespec_get(&prevTime, 0);
     if(treeType){
         for(StellarObject *stellarObject: *objectsInTree){
             stellarObject->updateFutureVelocity(timestep);
@@ -31,7 +30,7 @@ void Tree::buildTree(long double timestep){
         }
     }
     root = new TreeCodeNode(objectsInTree);
-    clock_gettime(CLOCK_MONOTONIC, &currTime);
+    std::timespec_get(&currTime, 0);
     updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
     // printf("Building tree took %d mics\n", updateTime);
     // printf("Tree builder end\n");
@@ -96,7 +95,7 @@ void Tree::update(long double timestep, Renderer *renderer){
     struct timespec prevTime;
 	struct timespec currTime;
 	int updateTime;
-    clock_gettime(CLOCK_MONOTONIC, &prevTime);
+    std::timespec_get(&prevTime, 0);
     
     int threadNumber;
     int amount;
@@ -181,7 +180,7 @@ void Tree::update(long double timestep, Renderer *renderer){
                 // }
             }
             // sleep(1);
-            clock_gettime(CLOCK_MONOTONIC, &currTime);
+            std::timespec_get(&currTime, 0);
             // updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
             // printf("Updating local tree took %d mics\n", updateTime);
             break;

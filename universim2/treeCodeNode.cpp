@@ -1,5 +1,5 @@
 #include <cstdio>
-#include <unistd.h>
+// #include <unistd.h>
 #include <cmath>
 #include "treeCodeNode.hpp"
 #include "tree.hpp"
@@ -88,12 +88,12 @@ void TreeCodeNode::calculateNodeValues(){       // Centre of mass position seems
         return;
     }
     mass = 0;
-    long double minX = LONG_DOUBLE_MAX_VALUE;
-    long double minY = LONG_DOUBLE_MAX_VALUE;
-    long double minZ = LONG_DOUBLE_MAX_VALUE;
-    long double maxX = LONG_DOUBLE_MIN_VALUE;
-    long double maxY = LONG_DOUBLE_MIN_VALUE;
-    long double maxZ = LONG_DOUBLE_MIN_VALUE;
+    long double minX = std::numeric_limits<long double>::max();
+    long double minY = std::numeric_limits<long double>::max();
+    long double minZ = std::numeric_limits<long double>::max();
+    long double maxX = std::numeric_limits<long double>::min();
+    long double maxY = std::numeric_limits<long double>::min();;
+    long double maxZ = std::numeric_limits<long double>::min();;
     long double tempMass;
     long double tempX;
     long double tempY;

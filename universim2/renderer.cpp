@@ -1525,7 +1525,7 @@ std::vector<StellarObject*> *Renderer::getAllObjects(){
     return allObjects;
 }
 
-u_int8_t Renderer::getRendererThreadCount(){
+int8_t Renderer::getRendererThreadCount(){
     return rendererThreadCount;
 }
 

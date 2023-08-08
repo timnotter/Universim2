@@ -4,18 +4,22 @@
 #include "constants.hpp"
 #include "point2d.hpp"
 #ifdef _WIN32
-void MyWindow::drawBackground(int colour);
-void MyWindow::endDrawing();
+MyWindow::MyWindow(){}
+void MyWindow::handleEvents(bool &running, bool &isPaused){}
+void MyWindow::handleEvent(void *eventptr, bool &running, bool &isPaused){}
+void MyWindow::closeWindow(){}
+void MyWindow::drawBackground(int colour){}
+void MyWindow::endDrawing(){}
 
-int MyWindow::drawPoint(unsigned int col, int x, int y);
-int MyWindow::drawLine(unsigned int col, int x1, int y1, int x2, int y2);
-int MyWindow::drawRect(unsigned int col, int x, int y, int width, int height);
-int MyWindow::drawCircle(unsigned int col, int x, int y, int diam);
-int MyWindow::drawString(unsigned int col, int x, int y, const char *stringToBe);
-int MyWindow::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
-int MyWindow::drawPolygon(unsigned int col, short count, Point2d *points, bool checks);
+int MyWindow::drawPoint(unsigned int col, int x, int y){return 1;}
+int MyWindow::drawLine(unsigned int col, int x1, int y1, int x2, int y2){return 1;}
+int MyWindow::drawRect(unsigned int col, int x, int y, int width, int height){return 1;}
+int MyWindow::drawCircle(unsigned int col, int x, int y, int diam){return 1;}
+int MyWindow::drawString(unsigned int col, int x, int y, const char *stringToBe){return 1;}
+int MyWindow::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3){return 1;}
+int MyWindow::drawPolygon(unsigned int col, short count, Point2d *points, bool checks){return 1;}
 
-bool MyWindow::visibleOnScreen(int x, int y);
+bool MyWindow::visibleOnScreen(int x, int y){return false;}
 #endif
 
 // #ifdef __unix
@@ -123,10 +127,6 @@ void MyWindow::closeWindow(){
     // delete backBuffer;
     // delete rootWindow;
     // delete display;                         
-}
-
-void MyWindow::setRenderer(Renderer *renderer){
-    this->renderer = renderer;
 }
 
 void MyWindow::drawBackground(int colour){
@@ -304,6 +304,10 @@ bool MyWindow::visibleOnScreen(int x, int y){
     return (x >= 0 && x <= windowWidth && y >= 0 && y <= windowHeight);
 }
 #endif
+
+void MyWindow::setRenderer(Renderer *renderer){
+    this->renderer = renderer;
+}
 
 Point2d MyWindow::calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2){
     // We look at the vectors from p2 to the edges, f.e p2-(0/0) and p2-(windowWidth/0), and check if the vector p2-p1 is

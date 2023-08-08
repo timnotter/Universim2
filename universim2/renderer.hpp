@@ -1,8 +1,8 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
-#define CL_TARGET_OPENCL_VERSION 220
-#include <CL/cl.h>
-#include <X11/Xlib.h>
+// #define CL_TARGET_OPENCL_VERSION 220
+// #include <CL/cl.h>
+// #include <X11/Xlib.h>
 #include <vector>
 #include <time.h>
 #include <cstring>
@@ -110,7 +110,7 @@ private:
 
     int *optimalTimeLocalUpdate;
 
-    u_int8_t rendererThreadCount;
+    int8_t rendererThreadCount;
 
 public:
     Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate);
@@ -170,7 +170,7 @@ public:
     StellarObject *getReferenceObject();
     std::vector<DrawObject*> *getObjectsOnScreen();
     std::vector<StellarObject*> *getAllObjects();
-    u_int8_t getRendererThreadCount();
+    int8_t getRendererThreadCount();
 
     std::vector<int> dataPoints;
     std::vector<int> dataPoints2;
