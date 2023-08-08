@@ -975,6 +975,8 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
 }
 
 void Renderer::calculateReferenceLinePositions(int x, int y, int size, StellarObject *object){
+    int windowWidth = myWindow->getWindowWidth();
+    int windowHeight = myWindow->getWindowHeight();
     // First we find out the positions on screen of the endpoints of the reference lines
     PositionVector point1XAxis = PositionVector(-3 * object->getRadius() + object->getPositionAtPointInTime().getX(), 0 + object->getPositionAtPointInTime().getY(), 0 + object->getPositionAtPointInTime().getZ());
     PositionVector point2XAxis = PositionVector(3 * object->getRadius() + object->getPositionAtPointInTime().getX(), 0 + object->getPositionAtPointInTime().getY(), 0 + object->getPositionAtPointInTime().getZ());
@@ -1236,7 +1238,7 @@ void Renderer::resetCameraOrientation(){
 }
 
 bool Renderer::visibleOnScreen(int x, int y){
-    return (x >= 0 && x <= windowWidth && y >= 0 && y <= windowHeight);
+    return myWindow->visibleOnScreen(x, y);
 }
 
 void Renderer::increaseCameraMoveAmount(){
@@ -1500,7 +1502,7 @@ int Renderer::getWindowHeight(){
 }
 
 MyWindow *Renderer::getMyWindow(){
-    return &myWindow;
+    return myWindow;
 }
 
 Matrix3d Renderer::getInverseTransformationMatrixCameraBasis(){

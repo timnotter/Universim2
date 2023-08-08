@@ -53,10 +53,11 @@ int main(int argc, char **argv){
 	while(isRunning){
 		// Handle events
         clock_gettime(CLOCK_MONOTONIC, &prevTime);
-		while(XPending(myWindow.getDisplay())){
-            XNextEvent(myWindow.getDisplay(), myWindow.getEvent());
-            myWindow.handleEvent(*(myWindow.getEvent()), isRunning, isPaused);
-        }
+		// while(XPending(myWindow.getDisplay())){
+        //     XNextEvent(myWindow.getDisplay(), myWindow.getEvent());
+        //     myWindow.handleEvent(*(myWindow.getEvent()), isRunning, isPaused);
+        // }
+		myWindow.handleEvents(isRunning, isPaused);
 		// clock_gettime(CLOCK_MONOTONIC, &currTime);
 		// updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
 		// printf("Events took %d mics\n", updateTime);

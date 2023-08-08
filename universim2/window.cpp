@@ -31,29 +31,47 @@ MyWindow::MyWindow(){
     }
     screen = DefaultScreen(display);
     // Simple window with no alpha value
-    window = XCreateSimpleWindow(display, RootWindow(display, screen), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 1, BlackPixel(display, screen), BlackPixel(display, screen));
+    window = new Window;
+    Window windowPointer = 
+    *(static_cast<Window *>(window)) = XCreateSimpleWindow((static_cast<Display *>(display)), RootWindow((static_cast<Display *>(display)), screen), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 1, BlackPixel((static_cast<Display *>(display)), screen), BlackPixel((static_cast<Display *>(display)), screen));
+
+    event = new XEvent;
+    gc = new GC;
 
     int major_version_return, minor_version_return;
-    if(!XdbeQueryExtension(display, &major_version_return, &minor_version_return)){
+    if(!XdbeQueryExtension((static_cast<Display *>(display)), &major_version_return, &minor_version_return)){
         printf("DBE Problem\n");
     }
+    
 
-    XMapWindow(display, window);
-    backBuffer = XdbeAllocateBackBufferName(display, window, XdbeBackground);
-    XSelectInput(display, window, KeyPressMask | ExposureMask);
-    gc = XCreateGC(display, window, 0, 0);
+    XMapWindow((static_cast<Display *>(display)), *(static_cast<Window *>(window)));
+    backBuffer = new XdbeBackBuffer;
+    *(static_cast<XdbeBackBuffer *>(backBuffer)) = XdbeAllocateBackBufferName((static_cast<Display *>(display)),*(static_cast<Window *>(window)), XdbeBackground);
+    XSelectInput((static_cast<Display *>(display)),*(static_cast<Window *>(window)), KeyPressMask | ExposureMask);
+    *(static_cast<GC *>(gc)) = XCreateGC((static_cast<Display *>(display)),*(static_cast<Window *>(window)), 0, 0);
+
+    rootWindow = new Window;
 }
 
-void MyWindow::handleEvent(XEvent &event, bool &running, bool &isPaused){
-    if(event.type == Expose){
+void MyWindow::handleEvents(bool &isRunning, bool &isPaused){
+    while(XPending((static_cast<Display *>(display)))){
+        XNextEvent((static_cast<Display *>(display)), static_cast<XEvent *>(event));
+        handleEvent(event, isRunning, isPaused);
+    }
+}
+
+void MyWindow::handleEvent(void *eventptr, bool &isRunning, bool &isPaused){
+    XEvent *event = static_cast<XEvent *>(eventptr);
+
+    if(event->type == Expose){
         // std::cout << "Expose event\n";
         renderer->draw();
     }
 
-    else if(event.type == KeyPress){
+    else if(event->type == KeyPress){
         // printf("Key pressed\n");
-        switch(event.xkey.keycode){
-            case KEY_ESCAPE: running = false; /*printf("Escaped program\n");*/ break;
+        switch(event->xkey.keycode){
+            case KEY_ESCAPE: isRunning = false; /*printf("Escaped program\n");*/ break;
             case KEY_SPACE: isPaused = !isPaused; /*isPaused ? printf("Paused\n") : printf("Unpaused\n");*/ break;
             // Camera movements
             case KEY_K: renderer->moveCamera(FORWARDS, Y_AXIS); break;
@@ -91,9 +109,20 @@ void MyWindow::handleEvent(XEvent &event, bool &running, bool &isPaused){
 }
 
 void MyWindow::closeWindow(){
-    XFreeGC(display, gc);
-    XDestroyWindow(display, window);
-    XCloseDisplay(display);
+    XFreeGC((static_cast<Display *>(display)), *(static_cast<GC *>(gc)));
+    XDestroyWindow((static_cast<Display *>(display)),*(static_cast<Window *>(window)));
+    XCloseDisplay((static_cast<Display *>(display)));
+    delete (static_cast<Window *>(window));
+    delete (static_cast<XEvent *>(event));
+    delete (static_cast<GC *>(gc));
+    delete (static_cast<XdbeBackBuffer *>(backBuffer));
+    delete (static_cast<Window *>(rootWindow));
+    // delete (static_cast<Display *>(display));                    // Possible memory leak, but throws error if enabled
+    // delete event;
+    // delete gc;
+    // delete backBuffer;
+    // delete rootWindow;
+    // delete display;                         
 }
 
 void MyWindow::setRenderer(Renderer *renderer){
@@ -101,18 +130,18 @@ void MyWindow::setRenderer(Renderer *renderer){
 }
 
 void MyWindow::drawBackground(int colour){
-    XGetGeometry(display, window, &rootWindow, &tempX, &tempY, &windowWidth, &windowHeight, &borderWidth, &depth);
-    XSetWindowBackground(display, window, 0x111111);
+    XGetGeometry((static_cast<Display *>(display)),*(static_cast<Window *>(window)), (static_cast<Window *>(rootWindow)), &tempX, &tempY, &windowWidth, &windowHeight, &borderWidth, &depth);
+    XSetWindowBackground((static_cast<Display *>(display)),*(static_cast<Window *>(window)), 0x111111);
 }
 
 void MyWindow::endDrawing(){
-    XdbeSwapInfo swap_info = {window, 1};
-    XdbeSwapBuffers(display, &swap_info, 1);
+    XdbeSwapInfo swap_info = {*(static_cast<Window *>(window)), 1};
+    XdbeSwapBuffers((static_cast<Display *>(display)), &swap_info, 1);
 }
 
 int MyWindow::drawPoint(unsigned int col, int x, int y){
-    XSetForeground(display, gc, col);
-    XDrawPoint(display, backBuffer, gc, x, y);
+    XSetForeground((static_cast<Display *>(display)), *(static_cast<GC *>(gc)), col);
+    XDrawPoint((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), x, y);
     return 0;
 }
 int MyWindow::drawLine(unsigned int col, int x1, int y1, int x2, int y2){
@@ -162,27 +191,27 @@ int MyWindow::drawLine(unsigned int col, int x1, int y1, int x2, int y2){
         // printf("P2 not visible: now drawing line from %d, %d to %d, %d\n", x1, y1, x2, y2);
     }
     // if(col == RED_COL) printf("Draw line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-    XSetForeground(display, gc, col);
-    XDrawLine(display, backBuffer, gc, x1, y1, x2, y2);
+    XSetForeground((static_cast<Display *>(display)), *(static_cast<GC *>(gc)), col);
+    XDrawLine((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), x1, y1, x2, y2);
     return 0;
 }
 
 int MyWindow::drawRect(unsigned int col, int x, int y, int width, int height){
-    XSetForeground(display, gc, col);
-    XFillRectangle(display, backBuffer, gc, x, y, width, height);
+    XSetForeground((static_cast<Display *>(display)), *(static_cast<GC *>(gc)), col);
+    XFillRectangle((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), x, y, width, height);
     return 0;
 }
 
 int MyWindow::drawCircle(unsigned int col, int x, int y, int diam){
-    XSetForeground(display, gc, col);
-    XDrawArc(display, backBuffer, gc, x-diam/2, y-diam/2, diam, diam, 0, 360 * 64);
-    XFillArc(display, backBuffer, gc, x-diam/2, y-diam/2, diam, diam, 0, 360 * 64);
+    XSetForeground((static_cast<Display *>(display)), *(static_cast<GC *>(gc)), col);
+    XDrawArc((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), x-diam/2, y-diam/2, diam, diam, 0, 360 * 64);
+    XFillArc((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), x-diam/2, y-diam/2, diam, diam, 0, 360 * 64);
     return 0;
 }
 
 int MyWindow::drawString(unsigned int col, int x, int y, const char *stringToBe){
-    XSetForeground(display, gc, col);
-    XDrawString(display, backBuffer, gc, x, y, stringToBe, strlen(stringToBe));
+    XSetForeground((static_cast<Display *>(display)), *(static_cast<GC *>(gc)), col);
+    XDrawString((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), x, y, stringToBe, strlen(stringToBe));
     return 0;
 }
 
@@ -237,8 +266,8 @@ int MyWindow::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int
     xPoints[2].x = x3;
     xPoints[2].y = y3;
 
-    XSetForeground(display, gc, col);
-    XFillPolygon(display, backBuffer, gc, xPoints, 3, Convex, CoordModeOrigin);
+    XSetForeground((static_cast<Display *>(display)), *(static_cast<GC *>(gc)), col);
+    XFillPolygon((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), xPoints, 3, Convex, CoordModeOrigin);
     // printf("Drawing triangle in renderer (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
     // XDrawPolygon(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), points, 3, Convex, CoordModeOrigin);
     // drawLine(BLACK_COL, x1, y1, x2, y2);
@@ -261,8 +290,8 @@ int MyWindow::drawPolygon(unsigned int col, short count, Point2d *points, bool c
     }
 
 
-    XSetForeground(display, gc, col);
-    XFillPolygon(display, backBuffer, gc, xPoints, count, Convex, CoordModeOrigin);
+    XSetForeground((static_cast<Display *>(display)), *(static_cast<GC *>(gc)), col);
+    XFillPolygon((static_cast<Display *>(display)), *(static_cast<XdbeBackBuffer *>(backBuffer)), *(static_cast<GC *>(gc)), xPoints, count, Convex, CoordModeOrigin);
     // for(int i=0;i<count;i++){
     //     // printf("Trying to draw line from (%d, %d) to (%d, %d)\n", points[i].x, points[i].y, points[(i+1)%count].x, points[(i+1)%count].y);
     //     drawLine(RED_COL, points[i].getX(), points[i].getY(), points[(i+1)%count].getX(), points[(i+1)%count].getY());
@@ -614,5 +643,5 @@ int MyWindow::getWindowWidth(){
     return windowWidth;
 }
 int MyWindow::getWindowHeight(){
-    return windowHeight
+    return windowHeight;
 }

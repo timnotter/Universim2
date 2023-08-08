@@ -45,24 +45,19 @@
 
 class Renderer;
 class Point2d;
-struct Display;
-struct Window;
-struct XEvent;
-struct GC;
-struct XdbeBackBuffer;
                                                                     // TODO --------------- Changed all variable names to be clearer!!!! -------------------
 class MyWindow{
 private:
     // Used for X11 on Linux
-    Display *display;
-    Window window;
+    void *display;
+    void *window;
     int screen;
-    XEvent event;
+    void *event;
     Renderer *renderer;
-    GC gc;
-    XdbeBackBuffer backBuffer;
+    void *gc;
+    void *backBuffer;
     // Used to store information about the window
-    Window rootWindow;
+    void *rootWindow;
     unsigned int windowWidth;
     unsigned int windowHeight;
     unsigned int borderWidth;
@@ -72,14 +67,13 @@ private:
 
 public:
     MyWindow();
-    void handleEvent(XEvent &event, bool &running, bool &isPaused);
-    void closeWindow();
     
     void setRenderer(Renderer *renderer);
 
     int getWindowWidth();
     int getWindowHeight();
 
+    // These functions are platform dependent
     void drawBackground(int colour);
     void endDrawing();
 
@@ -90,6 +84,10 @@ public:
     int drawString(unsigned int col, int x, int y, const char *stringToBe);
     int drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
     int drawPolygon(unsigned int col, short count, Point2d *points, bool checks = false);
+
+    void handleEvents(bool &running, bool &isPaused);
+    void handleEvent(void *eventptr, bool &running, bool &isPaused);
+    void closeWindow();
 
     // These functions should be platform independent
     Point2d calculateEdgePointWithNoneVisible(int x1, int y1, int x2, int y2);

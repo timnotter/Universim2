@@ -65,9 +65,9 @@ int quicksortInsert(int start, int end, std::vector<DrawObject*> *vector);
 class Renderer{
 private:
     MyWindow *myWindow;
+    Date *date;
     // Not sure what this is used for - keep for keepings sake. Currently being outsourced to window.cpp
     // Window rootWindow;
-    // Date *date;
 
     // unsigned int windowWidth;
     // unsigned int windowHeight;
