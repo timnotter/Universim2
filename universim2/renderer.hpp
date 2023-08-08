@@ -65,16 +65,16 @@ int quicksortInsert(int start, int end, std::vector<DrawObject*> *vector);
 class Renderer{
 private:
     MyWindow *myWindow;
-    // Not sure what this is used for - keep for keepings sake
-    Window rootWindow;
-    Date *date;
+    // Not sure what this is used for - keep for keepings sake. Currently being outsourced to window.cpp
+    // Window rootWindow;
+    // Date *date;
 
-    unsigned int windowWidth;
-    unsigned int windowHeight;
-    unsigned int borderWidth;
-    unsigned int depth;
-    int tempX;
-    int tempY;
+    // unsigned int windowWidth;
+    // unsigned int windowHeight;
+    // unsigned int borderWidth;
+    // unsigned int depth;
+    // int tempX;
+    // int tempY;
 
     long double cameraMoveAmount = astronomicalUnit;
 
@@ -123,20 +123,20 @@ public:
     void drawObjects();
     void drawUI();
     void drawDrawObjects();
-    int drawPoint(unsigned int col, int x, int y);
-    int drawLine(unsigned int col, int x1, int y1, int x2, int y2);
-    // First point is the one being changed, second point stays the same
-    Point2d calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2);
-    // First point is the one being changed, second point stays the same. Returns -1/-1 if line between the points does not intersect the canvas
-    Point2d calculateEdgePointWithNoneVisible(int x1, int y1, int x2, int y2);
-    int drawRect(unsigned int col, int x, int y, int width, int height);
-    int drawCircle(unsigned int col, int x, int y, int diam);
-    int drawString(unsigned int col, int x, int y, const char *stringToBe);
-    int drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
-    int drawPolygon(unsigned int col, short count, Point2d *points, bool checks = false);
-    int drawTriangleAllNotVisible(unsigned int col, Point2d *points);
-    int drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible);
-    int drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible);
+    // int drawPoint(unsigned int col, int x, int y);
+    // int drawLine(unsigned int col, int x1, int y1, int x2, int y2);
+    // // First point is the one being changed, second point stays the same
+    // Point2d calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2);
+    // // First point is the one being changed, second point stays the same. Returns -1/-1 if line between the points does not intersect the canvas
+    // Point2d calculateEdgePointWithNoneVisible(int x1, int y1, int x2, int y2);
+    // int drawRect(unsigned int col, int x, int y, int width, int height);
+    // int drawCircle(unsigned int col, int x, int y, int diam);
+    // int drawString(unsigned int col, int x, int y, const char *stringToBe);
+    // int drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
+    // int drawPolygon(unsigned int col, short count, Point2d *points, bool checks = false);
+    // int drawTriangleAllNotVisible(unsigned int col, Point2d *points);
+    // int drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible);
+    // int drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible);
     void rotateCamera(long double angle, short axis);
     void moveCamera(short direction, short axis);
     void increaseCameraMoveAmount();
@@ -164,6 +164,7 @@ public:
     void adjustThreadCount(int8_t adjustment);
     int getWindowWidth();
     int getWindowHeight();
+    MyWindow *getMyWindow();
     Matrix3d getInverseTransformationMatrixCameraBasis();
     PositionVector getCameraPosition();
     StellarObject *getReferenceObject();

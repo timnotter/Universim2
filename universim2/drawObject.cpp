@@ -76,21 +76,21 @@ void DrawObject::addDrawObject(DrawObject *drawObject){
 void DrawObject::draw(Renderer *renderer){
     Point2d points[4];
     switch(type){
-            case CIRCLE: 
-                renderer->drawCircle(colour, x1, y1, size*2);
+            case CIRCLE:
+                renderer->getMyWindow()->drawCircle(colour, x1, y1, size*2);
                 break;
             case LINE:
-                renderer->drawLine(colour, x1, y1, x2, y2);
+                renderer->getMyWindow()->drawLine(colour, x1, y1, x2, y2);
                 break;
             case RECTANGLE:
-                renderer->drawRect(colour, x1, y1, x2-x1, y2-y1);
+                renderer->getMyWindow()->drawRect(colour, x1, y1, x2-x1, y2-y1);
                 break;
             case TRIANGLE:
                 // printf("Drawing triangle in drawObject (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
-                renderer->drawTriangle(colour, x1, y1, x2, y2, x3, y3);
+                renderer->getMyWindow()->drawTriangle(colour, x1, y1, x2, y2, x3, y3);
                 break;
             case POINT:
-                renderer->drawPoint(colour, x1, y1);
+                renderer->getMyWindow()->drawPoint(colour, x1, y1);
                 break;
             case POLYGON:
                 // Draw Polygon: we only implement polygons with four corners
@@ -99,13 +99,13 @@ void DrawObject::draw(Renderer *renderer){
                 points[2] = Point2d(x3, y3);
                 points[3] = Point2d(x4, y4);
 
-                renderer->drawPolygon(colour, 4, points, true);
+                renderer->getMyWindow()->drawPolygon(colour, 4, points, true);
                 // printf("Not implemented draw for polygon\n");
                 break;
             case PLUS:
-                renderer->drawLine(colour, x1-1, y1, x1+1, y1);
-                renderer->drawPoint(colour, x1, y1-1);
-                renderer->drawPoint(colour, x1, y1+1);
+                renderer->getMyWindow()->drawLine(colour, x1-1, y1, x1+1, y1);
+                renderer->getMyWindow()->drawPoint(colour, x1, y1-1);
+                renderer->getMyWindow()->drawPoint(colour, x1, y1+1);
                 break;
             case GROUP:
                 // We first have to sort the children
