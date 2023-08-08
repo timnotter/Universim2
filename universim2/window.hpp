@@ -48,12 +48,12 @@ class Point2d;
                                                                     // TODO --------------- Changed all variable names to be clearer!!!! -------------------
 class MyWindow{
 private:
-    // Used for X11 on Linux
+    Renderer *renderer;
+    // Used for X11 on Linux. They are all void*, scuh that we don't have to forward declare types. These void* can possibly reused by the windows graphics API
     void *display;
     void *window;
     int screen;
     void *event;
-    Renderer *renderer;
     void *gc;
     void *backBuffer;
     // Used to store information about the window
