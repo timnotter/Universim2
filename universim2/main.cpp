@@ -2,8 +2,6 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
-#include <time.h>
-#include <ctime>
 #include "main.hpp"
 #include "window.hpp"
 #include "timer.hpp"

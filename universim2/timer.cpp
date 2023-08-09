@@ -1,3 +1,4 @@
+#include <ctime>
 #include "timer.hpp"
 
 #ifdef _WIN32
