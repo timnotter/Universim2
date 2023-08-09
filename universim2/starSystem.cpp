@@ -1,5 +1,5 @@
 #include <string>
-#include <ctime>
+#include "timer.hpp"
 #include "star.hpp"
 #include "starSystem.hpp"
 #include "constants.hpp"
@@ -17,7 +17,7 @@ StarSystem::StarSystem(std::function<long double(double)> densityFunction, int n
     loneStar = true;
     generateName();
     struct timespec currTime;
-    std::timespec_get(&currTime, 0);
+    getTime(&currTime, 0);
     srand(currTime.tv_nsec);
 
     // // We generate a number between 0 and 1 to determine mean distance, according to the delivered density function

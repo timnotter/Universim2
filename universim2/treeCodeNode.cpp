@@ -1,6 +1,7 @@
 #include <cstdio>
 // #include <unistd.h>
 #include <cmath>
+#include <thread>
 #include "treeCodeNode.hpp"
 #include "tree.hpp"
 #include "constants.hpp"
@@ -14,6 +15,7 @@
 // }
 
 TreeCodeNode::TreeCodeNode(std::vector<StellarObject*> *objectsInNode){
+    // printf("Constructor\n");
     minCornerPosition = PositionVector();
     leaf = false;
     type = LOCAL_TREE;
@@ -25,23 +27,31 @@ TreeCodeNode::TreeCodeNode(std::vector<StellarObject*> *objectsInNode){
     calculateNodeValues();
     // printf("Size: %lu, length: %Lf\n", objectsInNode->size(), length);
     createSubNodes();
-    // printf("Created node with %lu objects, position (%f, %f, %f), size (%f, %f, %f) and mass %f\n", objectsInNode->size(), centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ(), length, width, height, mass);
+    // printf("Created node with %lu objects, position (%s), size (%Lf, %Lf, %Lf) and mass %Lf\n", objectsInNode->size(), centreOfMass.toString(), length, width, height, mass);
 }
 
 void TreeCodeNode::createSubNodes(){
+
+    // ----------------------------------------------------------- Fix this: nodes are not splitted correctly -----------------------------------------------------------
+
     // printf("Create subnode with size: %lu and size (%Lf, %Lf, %Lf)\n", objectsInNode.size(), length, width, height);
     // usleep(100000);
-    if(objectsInNode.size()==1) {
-        leaf = true;
+    if(leaf || objectsInNode.size()==1) {
+        // printf("Leaf\n");
         return;
     }
+    // if(objectsInNode.size()<=3){
+    //     for(StellarObject *stellarObject: objectsInNode){
+    //         printf("%s: (%s)\n", stellarObject->getName(), getRelevantPositionOfTreetype(stellarObject).toString());
+    //     }
+    // }
+    // printf("-------------------------------------------------------\n");
     // printf("Create subnodes with %lu objects\n", objectsInNode.size());
     // Create vectors to group objects into subnodes
     std::vector<std::vector<StellarObject*>> objectsInSubnodes;
     for(int i=0;i<8;i++){
         objectsInSubnodes.push_back(std::vector<StellarObject*>());
     }
-
     // Go through all objects and add them to corresponding subnode vector
     for(StellarObject *stellarObject: objectsInNode){
         // bool xCondition = stellarObject->getX() < minCornerPosition.getX()+length/2;
@@ -50,6 +60,8 @@ void TreeCodeNode::createSubNodes(){
         bool xCondition = getRelevantXOfTreetype(stellarObject) < minCornerPosition.getX()+length/2;
         bool yCondition = getRelevantYOfTreetype(stellarObject) < minCornerPosition.getY()+width/2;
         bool zCondition = getRelevantZOfTreetype(stellarObject) < minCornerPosition.getZ()+height/2;
+
+        // printf("%s: %d, %d, %d\n", stellarObject->getName(), xCondition, yCondition, zCondition);
 
         if(xCondition){
             if(yCondition){
@@ -76,6 +88,7 @@ void TreeCodeNode::createSubNodes(){
     // Go through every vector and if there is at least one object, create the corresponding subnode
     for(int i=0;i<8;i++){
         if(objectsInSubnodes[i].size()!=0){
+            // printf("Inserting subnode\n");
             subNodes.push_back(new TreeCodeNode(&(objectsInSubnodes[i])));
         }
     }
@@ -91,9 +104,13 @@ void TreeCodeNode::calculateNodeValues(){       // Centre of mass position seems
     long double minX = std::numeric_limits<long double>::max();
     long double minY = std::numeric_limits<long double>::max();
     long double minZ = std::numeric_limits<long double>::max();
-    long double maxX = std::numeric_limits<long double>::min();
-    long double maxY = std::numeric_limits<long double>::min();;
-    long double maxZ = std::numeric_limits<long double>::min();;
+    long double maxX = std::numeric_limits<long double>::lowest();
+    long double maxY = std::numeric_limits<long double>::lowest();
+    long double maxZ = std::numeric_limits<long double>::lowest();
+    // __LDBL_MIN__ curiously doesn't work, while __LDBL_MAX does. Thus we use the function and not the macros
+    // printf("Limits: %Lf - %Lf\n", minX, maxX);
+    // printf("Real limits: %Lf - %Lf\n", std::numeric_limits<long double>::max(), std::numeric_limits<long double>::lowest());
+    
     long double tempMass;
     long double tempX;
     long double tempY;
@@ -145,8 +162,26 @@ void TreeCodeNode::calculateNodeValues(){       // Centre of mass position seems
     length = maxX - minX;
     width = maxY - minY;
     height = maxZ - minZ;
-
     updateCorners();
+    // printf("Values of new node:\n\tcentreOfMass: (%s)\n\tminCornerPosition: (%s)\n\tmaxCornerPosition: (%Lf, %Lf, %Lf)\n\tsize: (%Lf, %Lf, %Lf)\n", 
+    // centreOfMass.toString(), minCornerPosition.toString(), maxX, maxY, maxZ, length, width, height);
+    // if(objectsInNode.size()<=3){
+    //     for(StellarObject *stellarObject: objectsInNode){
+    //         printf("\t%s: (%s)\n", stellarObject->getName(), getRelevantPositionOfTreetype(stellarObject).toString());
+    //     }
+    // }
+
+    // int counter = 0;
+    // for(StellarObject *stellarObject: objectsInNode){
+    //     if(!(getRelevantXOfTreetype(stellarObject) >= minX && getRelevantXOfTreetype(stellarObject) <= maxX) || 
+    //     !(getRelevantYOfTreetype(stellarObject) >= minY && getRelevantYOfTreetype(stellarObject) <= maxY) ||
+    //     !(getRelevantZOfTreetype(stellarObject) >= minZ && getRelevantZOfTreetype(stellarObject) <= maxZ)){
+    //         // printf("Object %s not in Node itself!!!!!!!\n", stellarObject->getName());
+    //         counter++;
+    //     }
+    // }
+    // printf("From %lu total starsystems, %d are out of bounds\n", objectsInNode.size(), counter);
+    // std::this_thread::sleep_for(std::chrono::seconds(1));
     // printf("Centre of mass of node: %s\n", centreOfMass.toString());
 }
 

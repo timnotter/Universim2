@@ -1,6 +1,6 @@
 #include <fstream>
 #include <string>
-#include <time.h>
+#include "timer.hpp"
 #include "star.hpp"
 #include "constants.hpp"
 
@@ -103,7 +103,7 @@ void Star::generateAndDetermineClassification(){
 
     // Initialise random number generator
     struct timespec currTime;
-    std::timespec_get(&currTime, 0);
+    getTime(&currTime, 0);
     srand(currTime.tv_nsec);
 
     // We generate a number between 0 and 1
@@ -249,7 +249,7 @@ void Star::generateMass(){
 
     // Initialise random number generator
     struct timespec currTime;
-    std::timespec_get(&currTime, 0);
+    getTime(&currTime, 0);
     srand(currTime.tv_nsec);
 
     // We generate a number between 0 and 1, the square will determine the total mass - to model somewhat of a bias towards smaller objects
