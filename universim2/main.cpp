@@ -2,9 +2,9 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
-#include <Windows.h>
+// #include <Windows.h>
 #include "main.hpp"
-// #include "window.hpp"
+#include "window.hpp"
 #include "timer.hpp"
 // #include "renderer.hpp"
 #include "galacticCore.hpp"
@@ -332,7 +332,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 
 	// Add random stars - currently orbit is still fixed
-	int totalStarsystems = 100;
+	int totalStarsystems = 10;
 	int threadNumber;
 	int amount;
 	long double characteristicScaleLength = 13000 * lightyear;
@@ -346,7 +346,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
     std::vector<std::thread> threads;
 	// min, max is macro in windows.h -> replace
 	// threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
-	threadNumber = min((max(totalStarsystems/10, 16))/16, 16);
+	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
 	// printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
     amount = totalStarsystems/threadNumber;
     for(int i=0;i<threadNumber-1;i++){
