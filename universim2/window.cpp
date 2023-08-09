@@ -20,6 +20,7 @@ int MyWindow::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int
 int MyWindow::drawPolygon(unsigned int col, short count, Point2d *points, bool checks){return 1;}
 
 bool MyWindow::visibleOnScreen(int x, int y){return false;}
+
 #endif
 
 // #ifdef __unix

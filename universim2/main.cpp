@@ -2,6 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
+#include <Windows.h>
 #include "main.hpp"
 #include "window.hpp"
 #include "timer.hpp"
@@ -20,6 +21,7 @@
 // Maybe store store position of substellar objects in relation to their star system, such that we have smaller numbers
 
 int main(int argc, char **argv){
+	// printf("Entered main function\n");
 	// Initialise base things
     MyWindow myWindow;
     bool isRunning = true;
@@ -33,7 +35,7 @@ int main(int argc, char **argv){
 	const int optimalTimeDrawing = MICROSECONDS_PER_FRAME;									//In microseconds
 	int optimalTimeLocalUpdate = MICROSECONDS_PER_FRAME * 2;								//In microseconds - I don't know why it has this value
 	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
-
+	// printf("Initialised stuff\n");
 
 	// The window needs a little time to show up properly, don't know why
 	renderer.drawWaitingScreen();
@@ -42,15 +44,17 @@ int main(int argc, char **argv){
 	// printf("Waiting screen drawn\n");
 
 	initialiseStellarObjects(&galaxies, &allObjects, &currentlyUpdatingOrDrawingLock);
-	// printf("Initialised\n");
+	// printf("Initialised stellar objects\n");
 	renderer.initialiseReferenceObject();
 
 	struct timespec prevTime;
 	struct timespec currTime;
 	int updateTime;
 	// Start gravity calculations
+	// printf("Starting updater threads\n");
 	std::thread *localUpdater = new std::thread(localUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &allObjects, &isRunning, &isPaused, &date, &optimalTimeLocalUpdate, &renderer, &localUpdateIsReady, &stellarUpdateIsReady);
 	std::thread *stellarUpdater = new std::thread(stellarUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &isRunning, &renderer, &allObjects, &localUpdateIsReady, &stellarUpdateIsReady);
+	// printf("Started updater threads\n");
 	while(isRunning){
 		// printf("While isRunning\n");
 		// Handle events
@@ -285,11 +289,12 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 			std::this_thread::sleep_for(std::chrono::microseconds(10));
 		}
 		stellarUpdateIsReady->lock();
-		printf("Full update of future values has been done\n");
+		// printf("Full update of future values has been done\n");
 	}
 }
 
-void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock){	
+void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock){
+	// printf("Entered initi function\n");
 	// Initialise all objects
 	galaxies->push_back(new GalacticCore("Sagittarius A*", 1, 1, 0, 0xFFFF00));
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 1.047)); 			// this inclinations is from the solar plan to the galactic plane, thus not of interest
@@ -317,6 +322,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
     ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180));
 	ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
 
+	// printf("Added the solar system\n");
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0, 0));
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
     // ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
@@ -326,7 +332,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 
 	// Add random stars - currently orbit is still fixed
-	int totalStarsystems = 10000;
+	int totalStarsystems = 100;
 	int threadNumber;
 	int amount;
 	long double characteristicScaleLength = 13000 * lightyear;
@@ -334,19 +340,24 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	auto densityFunction = [characteristicScaleLength](double u) -> long double {
 		return characteristicScaleLength * (std::sqrt(u) + u) / (1-u);
 	};
-
+	// printf("Defined density functions\n");
 	// printf("densityFunction(0.25) = %.0Lf\n", densityFunction(0.25));
 	// printf("a = %Lf, perc: %Lf\n", characteristicScaleLength, densityFunction(0.25)/characteristicScaleLength);
     std::vector<std::thread> threads;
-	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
+	// min, max is macro in windows.h -> replace
+	// threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
+	threadNumber = min((max(totalStarsystems/10, 16))/16, 16);
+	// printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
     amount = totalStarsystems/threadNumber;
     for(int i=0;i<threadNumber-1;i++){
         threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock, densityFunction));
     }
     threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock, densityFunction));
+	// printf("Starting last thread\n");
 	for(int i=0;i<threadNumber;i++){
         threads.at(i).join();
     }
+	// printf("Threads completed their task\n");
 
 	for(StellarObject *galacticCore: *galaxies){
         for(StellarObject *starSystem: *(galacticCore->getChildren())){
@@ -369,6 +380,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	for(StellarObject *galacticCore: *galaxies){
 		galacticCore->place();
 	}
+	// printf("Placed everything\n");
 
 	// printf("Distance of moon and earth: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
 	// printf("Distance of moon and CoM earthsystem: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getCentreOfMass() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
@@ -420,3 +432,69 @@ void readMoonFile(std::string fileLocation, StellarObject *parent){
 	}
     moonFile.close();
 }
+
+
+// LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+//     switch (uMsg) {
+//         case WM_PAINT: {
+//             PAINTSTRUCT ps;
+//             HDC hdc = BeginPaint(hwnd, &ps);
+
+//             // Draw white stripes
+//             RECT rect;
+//             GetClientRect(hwnd, &rect);
+//             HBRUSH whiteBrush = CreateSolidBrush(RGB(255, 0, 0));
+//             FillRect(hdc, &rect, whiteBrush);
+
+//             Rectangle(hdc, 100, 100, 300, 200);
+//             Ellipse(hdc, 400, 100, 600, 300);
+
+//             DeleteObject(whiteBrush);
+
+//             EndPaint(hwnd, &ps);
+//             return 0;
+//         }
+//         case WM_CLOSE:
+//             PostQuitMessage(0);
+//             return 0;
+//         default:
+//             return DefWindowProc(hwnd, uMsg, wParam, lParam);
+//     }
+// }
+
+// int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+//     const wchar_t CLASS_NAME[] = L"SampleWindowClass";
+
+//     WNDCLASSW wc = {};  // Use WNDCLASSW for wide character strings
+//     wc.lpfnWndProc = WindowProc;
+//     wc.hInstance = hInstance;
+//     wc.lpszClassName = CLASS_NAME;
+
+//     RegisterClassW(&wc);  // Use RegisterClassW
+
+//     HWND hwnd = CreateWindowExW(
+//         0,
+//         CLASS_NAME,
+//         L"White Stripes Window",
+//         WS_OVERLAPPEDWINDOW,
+//         CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
+//         NULL,
+//         NULL,
+//         hInstance,
+//         NULL
+//     );
+
+//     if (hwnd == NULL) {
+//         return 0;
+//     }
+
+//     ShowWindow(hwnd, nCmdShow);
+
+//     MSG msg = {};
+//     while (GetMessage(&msg, NULL, 0, 0)) {
+//         TranslateMessage(&msg);
+//         DispatchMessage(&msg);
+//     }
+
+//     return (int)msg.wParam;
+// }

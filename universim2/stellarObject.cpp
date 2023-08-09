@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <string>
+#include <thread>
 #include "stellarObject.hpp"
 #include "starSystem.hpp"
 #include "constants.hpp"
 #include "tree.hpp"
+#include "timer.hpp"
 
 StellarObject::StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination){
     // this->name = name;
@@ -85,9 +87,11 @@ void StellarObject::place(){
 
     // Initialise random object with current time
     struct timespec currTime;
-    std::timespec_get(&currTime, 0);
+    getTime(&currTime, 0);
     srand(currTime.tv_nsec);
-
+    // printf("Current time: %ld + %ld\n", currTime.tv_sec, currTime.tv_nsec);
+    // printf("3 random Numbers: %Lf, %Lf, %Lf\n", (long double)rand() / RAND_MAX * (2*PI), (long double)rand() / RAND_MAX * (2*PI), (long double)rand() / RAND_MAX * (2*PI));
+    
     // First place center of mass of system at appropriate place, then place children at appropriate places,
     // lastly, adjust position of object, such that center of mass is correct
     
@@ -104,10 +108,11 @@ void StellarObject::place(){
     long double meanAnomaly;
 
     // If object is galactic core, place it anywhere with distance to (0/0/0) = meanDistance
-    // printf("Trying to place %s\n", name);
+    // printf("Trying to place %s\n", getName());
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if(type == GALACTIC_CORE){
         tryAgain:
-
+        // printf("Trying...\n");
         centreOfMass = PositionVector();
         position = PositionVector();
         velocity = PositionVector();
@@ -146,14 +151,16 @@ void StellarObject::place(){
         if(children.size()!=0){
             PositionVector before = velocity;
             // velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
-            velocity += (childrenMomentum * -(1/mass));
+            // velocity += (childrenMomentum * -(1/mass));              // Changed to the following statement
+            velocity = (childrenMomentum * -1 / mass);
             // velocity += (children.at(0)->getVelocity() * children.at(0)->getTotalMass() * (-1))/mass;
             // printf("childrenMomentum * -(1/mass): (%s), adjustement: (%s)\n", (childrenMomentum * -(1/mass)).toString(), ((position / position.getLength()) * (G * totalMass / position.getLength())).toString());
             // printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
         }
-        // printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + velocity * mass).toString(), childrenMomentum.toString(), (velocity * mass).toString());
-        if((childrenMomentum + velocity * mass) != PositionVector()){
-            // printf("Total momentum is not 0, trying again\n");
+        PositionVector localMomentum = velocity * mass;
+        printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + localMomentum).toString(), childrenMomentum.toString(), localMomentum.toString());
+        if((childrenMomentum + localMomentum) != PositionVector()){
+            printf("Total momentum is not 0, trying again. Momentum is: (%s)\n",(childrenMomentum + velocity * mass).toString());
             goto tryAgain;
         }
     }
