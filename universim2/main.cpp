@@ -4,7 +4,7 @@
 #include <fstream>
 #include <Windows.h>
 #include "main.hpp"
-#include "window.hpp"
+// #include "window.hpp"
 #include "timer.hpp"
 // #include "renderer.hpp"
 #include "galacticCore.hpp"
