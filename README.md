@@ -1,5 +1,5 @@
 # Universim2
-This is an unfinished version of a galaxy simulator, written in C++ on Linux. 
+This is an unfinished version of a galaxy simulator, written in C++ on Linux. A windows version is in the works. 
 The renderer is written from scratch, only using the X11 library to display everything on screen
 
 The exe is under construction but not ready yet
