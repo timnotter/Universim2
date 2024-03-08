@@ -17,9 +17,24 @@
 #include "date.hpp"
 #include "tree.hpp"
 
+// #define DEBUG
+
 // ------------------------------------------------------------------- SUGGESTION -------------------------------------------------------------------
 // Maybe store store position of substellar objects in relation to their star system, such that we have smaller numbers
 
+#ifdef DEBUG
+int main(int argc, char **argv){
+	MyWindow myWindow;
+	std::vector<StellarObject*> galaxies = std::vector<StellarObject*>();
+	std::vector<StellarObject*> allObjects = std::vector<StellarObject*>();
+	Date date(1, 1, 2023);
+	std::mutex currentlyUpdatingOrDrawingLock;
+	int optimalTimeLocalUpdate = MICROSECONDS_PER_FRAME * 2;
+	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
+}
+#endif
+
+#ifndef DEBUG
 int main(int argc, char **argv){
 	// printf("Entered main function\n");
 	// Initialise base things
@@ -39,7 +54,7 @@ int main(int argc, char **argv){
 
 	// The window needs a little time to show up properly, don't know why
 	renderer.drawWaitingScreen();
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	renderer.drawWaitingScreen();
 	// printf("Waiting screen drawn\n");
 
@@ -51,10 +66,8 @@ int main(int argc, char **argv){
 	struct timespec currTime;
 	int updateTime;
 	// Start gravity calculations
-	// printf("Starting updater threads\n");
 	std::thread *localUpdater = new std::thread(localUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &allObjects, &isRunning, &isPaused, &date, &optimalTimeLocalUpdate, &renderer, &localUpdateIsReady, &stellarUpdateIsReady);
 	std::thread *stellarUpdater = new std::thread(stellarUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &isRunning, &renderer, &allObjects, &localUpdateIsReady, &stellarUpdateIsReady);
-	// printf("Started updater threads\n");
 	while(isRunning){
 		// printf("While isRunning\n");
 		// Handle events
@@ -107,7 +120,8 @@ int main(int argc, char **argv){
     }
 
 	return 0;
-}	
+}
+#endif
 
 void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, bool *isRunning, bool *isPaused, Date *date, int *optimalTimeLocalUpdate, Renderer *renderer, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady){
 	// Create vectors of all objects in the individual systems
@@ -350,6 +364,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
     amount = totalStarsystems/threadNumber;
     for(int i=0;i<threadNumber-1;i++){
+		// printf("Started thread number %d\n", i);
         threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock, densityFunction));
     }
     threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock, densityFunction));

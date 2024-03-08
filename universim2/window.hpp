@@ -1,43 +1,6 @@
 #ifndef WINDOW_HPP
 #define WINDOW_HPP
 
-#define KEY_ESCAPE 9
-#define KEY_SPACE 65
-#define KEY_Q 24
-#define KEY_W 25
-#define KEY_E 26
-#define KEY_R 27
-#define KEY_T 28
-#define KEY_Z 29
-#define KEY_U 30
-#define KEY_I 31
-#define KEY_O 32
-#define KEY_P 33
-#define KEY_A 38
-#define KEY_S 39
-#define KEY_D 40
-#define KEY_F 41
-#define KEY_G 42
-#define KEY_H 43
-#define KEY_J 44
-#define KEY_K 45
-#define KEY_L 46
-#define KEY_OE 47
-#define KEY_AE 48
-#define KEY_LEFT 113
-#define KEY_UP 111
-#define KEY_RIGHT 114
-#define KEY_DOWN 116
-#define KEY_PG_UP 112
-#define KEY_PG_DOWN 117
-#define KEY_1 10
-#define KEY_2 11
-#define KEY_3 12
-#define KEY_4 13
-#define KEY_5 14
-#define KEY_6 15
-#define KEY_7 16
-#define KEY_8 17
 // For initialisational purposes
 #define SCREEN_HEIGHT 600
 #define SCREEN_WIDTH 800
@@ -48,8 +11,7 @@ class Point2d;
                                                                     // TODO --------------- Changed all variable names to be clearer!!!! -------------------
 class MyWindow{
 private:
-    Renderer *renderer;
-    // Used for X11 on Linux. They are all void*, scuh that we don't have to forward declare types. These void* can possibly reused by the windows graphics API
+    // Used for X11 on Linux. They are all void*, such that we don't have to forward declare types. These void* can possibly reused by the windows graphics API (To be done)
     void *display;
     void *window;
     int screen;
@@ -70,22 +32,34 @@ public:
     MyWindow();
     
     void drawBackground(int colour);
+    // SHOULD be called after a function finished drawing. It swaps currently displayed and newly drawn picture
     void endDrawing();
 
+    // Checks if visible and draw if it is
     int drawPoint(unsigned int col, int x, int y);
+    // Checks if visible and draw if it is
     int drawLine(unsigned int col, int x1, int y1, int x2, int y2);
+    // Checks if visible and draw if it is
     int drawRect(unsigned int col, int x, int y, int width, int height);
+    // Checks if visible and draw if it is
     int drawCircle(unsigned int col, int x, int y, int diam);
+    // Checks if visible and draw if it is
     int drawString(unsigned int col, int x, int y, const char *stringToBe);
+    // Checks if visible and draw if it is
     int drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
+
+    // Unconditionally draws polygon. Bool checks can be implemented to do some checks
     int drawPolygon(unsigned int col, short count, Point2d *points, bool checks = false);
 
-    void handleEvents(bool &running, bool &isPaused);
-    void handleEvent(void *eventptr, bool &running, bool &isPaused);
+    // SHOULD be called after finishing execution. Cleans up object
     void closeWindow();
 
+    int getNumberOfPendingEvents();
+    // Takes as input two arraypointers and their size. Writes type of event into eventTypes array, and the keycodes into parameters array, if event was a keypress. 
+    // If total number of pending events is smaller than numberOfEvents, it writes -1 into the first entry of the evenTypes array
+    void getPendingEvents(int *eventTypes, u_int *parameters, int numberOfEvents);
+
     // These functions should be platform independent
-    void setRenderer(Renderer *renderer);
 
     int getWindowWidth();
     int getWindowHeight();

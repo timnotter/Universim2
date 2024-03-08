@@ -44,6 +44,44 @@
 
 #define STANDARD_CAMERA_POSITION -1 * std::min(std::max(2 * centreObject->getRadius(), solarRadius/5), astronomicalUnit)
 
+#define KEY_ESCAPE 9
+#define KEY_SPACE 65
+#define KEY_Q 24
+#define KEY_W 25
+#define KEY_E 26
+#define KEY_R 27
+#define KEY_T 28
+#define KEY_Z 29
+#define KEY_U 30
+#define KEY_I 31
+#define KEY_O 32
+#define KEY_P 33
+#define KEY_A 38
+#define KEY_S 39
+#define KEY_D 40
+#define KEY_F 41
+#define KEY_G 42
+#define KEY_H 43
+#define KEY_J 44
+#define KEY_K 45
+#define KEY_L 46
+#define KEY_OE 47
+#define KEY_AE 48
+#define KEY_LEFT 113
+#define KEY_UP 111
+#define KEY_RIGHT 114
+#define KEY_DOWN 116
+#define KEY_PG_UP 112
+#define KEY_PG_DOWN 117
+#define KEY_1 10
+#define KEY_2 11
+#define KEY_3 12
+#define KEY_4 13
+#define KEY_5 14
+#define KEY_6 15
+#define KEY_7 16
+#define KEY_8 17
+
 static int debug = 0;
 
 typedef struct CloseObject_s{
@@ -66,22 +104,14 @@ class Renderer{
 private:
     MyWindow *myWindow;
     Date *date;
-    // Not sure what this is used for - keep for keepings sake. Currently being outsourced to window.cpp
-    // Window rootWindow;
 
-    // unsigned int windowWidth;
-    // unsigned int windowHeight;
-    // unsigned int borderWidth;
-    // unsigned int depth;
-    // int tempX;
-    // int tempY;
-
+    // Distance one button press moves the camera, when not centring on an object
     long double cameraMoveAmount = astronomicalUnit;
 
     // Vector of stellar objects
     std::vector<StellarObject*> *galaxies;
     std::vector<StellarObject*> *allObjects;
-    // Camera
+
     // Camera position is always relativ to current reference object
     PositionVector cameraPosition;
     PositionVector cameraPlaneVector1;
@@ -97,15 +127,19 @@ private:
     StellarObject *referenceObject;
     StellarObject *lastReferenceObject;     // Currently unused
 
+    // Used to calculate display position of objects
     Matrix3d transformationMatrixCameraBasis;
     Matrix3d inverseTransformationMatrixCameraBasis;
 
+    // Vectors to store objects (any "normal" structures), dots (distant stars) and closeObjects (triangles of close opjects) 
+    // with their respective lock to allow multiple threads to add things
     std::vector<DrawObject*> objectsOnScreen;
     std::mutex objectsOnScreenLock;
     std::vector<DrawObject*> dotsOnScreen;
     std::mutex dotsOnScreenLock;
     std::vector<CloseObject*> closeObjects;
 
+    // Lock to protect the scene from changing while being drawn
     std::mutex *currentlyUpdatingOrDrawingLock;
 
     int *optimalTimeLocalUpdate;
@@ -115,53 +149,70 @@ private:
 public:
     Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate);
 
+    // Draws waiting screen
     void drawWaitingScreen();
+    // Draws a snapshot of the current scene
     void draw();
     void calculateObjectPosition(StellarObject *object, std::vector<DrawObject*> *objectsToAddOnScreen, std::vector<DrawObject*> *dotsToAddOnScreen);
     void calculateCloseObject(StellarObject *object, PositionVector distanceNewBasis, int size);
     void calculateReferenceLinePositions(int x, int y, int size, StellarObject *object);
+    // Blocks the updating procedure and stores current position of all objects by calling updatePositionAtPointInTimeMultiThread,
+    // then unblocks updating procedure and calculates the positions of all objects on screen at the snapshottime by calling calculateObjectPositionsMultiThread
+    // Objects that are close enough to by drawn with triangles are automatically sorted out and their triangles are now calculated.
+    // Lastly, function calls drawdrawObjects, which draws everything
     void drawObjects();
+    // Draws UI
     void drawUI();
+    // Sorts objectsOnScreen and then draws everything in the following order: dotsOnScreen, objectsOnScreen and then closeObjects
     void drawDrawObjects();
-    // int drawPoint(unsigned int col, int x, int y);
-    // int drawLine(unsigned int col, int x1, int y1, int x2, int y2);
-    // // First point is the one being changed, second point stays the same
-    // Point2d calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2);
-    // // First point is the one being changed, second point stays the same. Returns -1/-1 if line between the points does not intersect the canvas
-    // Point2d calculateEdgePointWithNoneVisible(int x1, int y1, int x2, int y2);
-    // int drawRect(unsigned int col, int x, int y, int width, int height);
-    // int drawCircle(unsigned int col, int x, int y, int diam);
-    // int drawString(unsigned int col, int x, int y, const char *stringToBe);
-    // int drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
-    // int drawPolygon(unsigned int col, short count, Point2d *points, bool checks = false);
-    // int drawTriangleAllNotVisible(unsigned int col, Point2d *points);
-    // int drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible);
-    // int drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible);
+    // Either rotates camera around the centred object or rotates camera normally while not centring anything and recalculates transformation matrices
     void rotateCamera(long double angle, short axis);
+    // Either moves camera proportionally to distance to centred object or by fixed amount while not centring anything
     void moveCamera(short direction, short axis);
+    // Increases fixed camera move amount while not centring anything
     void increaseCameraMoveAmount();
+    // Decreases fixed camera move amount while not centring anything
     void decreaseCameraMoveAmount();
     void increaseSimulationSpeed();
     void decreaseSimulationSpeed();
+    // Jumps to reference object, reset camera orientation to standard value and recalculates transformation matrices
     void resetCameraOrientation();
 
     void centreParent();
     void centreChild();
+    // Centring next child of parent
     void centreNext();
     void centrePrevious();
     void centreNextStarSystem();
     void centrePreviousStarSystem();
     void centreNearest();
+    // Sets centre object to to reference object while not centring anything or enter "free roam mode" and unset centre object
     void toggleCentre();
 
     bool visibleOnScreen(int x, int y);
+    // Locks and adds single objects to objectsOnScreen vector
+    // AVOID due to performance
     void addObjectOnScreen(DrawObject *drawObjects);
+    // Locks and adds single objects to dotsOnScreen vector
+    // AVOID due to performance
     void addDotOnScreen(DrawObject *drawObjects);
+    // Locks and adds all objects to objectsOnScreen vector
     void addObjectsOnScreen(std::vector<DrawObject*> *drawObjects);
+    // Locks and adds all objects to dotsOnScreen vector
     void addDotsOnScreen(std::vector<DrawObject*> *drawObjects);
-    // Sorts all objects with index from start to end-1
+
+    // Initialises first reference object
+    // SHOULD be called by main function after initialising all objects
     void initialiseReferenceObject();
+    // Adjusts thread count of the renderer by (adjustment) if threadCount has not reached 1 or RENDERER_MAX_THREAD_COUNT
     void adjustThreadCount(int8_t adjustment);
+
+    // Polls all waiting events and resolves them by calling handleEvent onto them
+    void handleEvents(bool &running, bool &isPaused);
+    // Calls the underlying windwow function to get the event number and then resolves them
+    void handleEvent(void *eventptr, bool &running, bool &isPaused);
+    
+    // Getter
     int getWindowWidth();
     int getWindowHeight();
     MyWindow *getMyWindow();
@@ -172,6 +223,7 @@ public:
     std::vector<StellarObject*> *getAllObjects();
     int8_t getRendererThreadCount();
 
+    // Can be used for debugging
     std::vector<int> dataPoints;
     std::vector<int> dataPoints2;
     std::vector<int> dataPoints3;

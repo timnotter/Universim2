@@ -5,8 +5,6 @@
 #include "point2d.hpp"
 #ifdef _WIN32
 MyWindow::MyWindow(){}
-void MyWindow::handleEvents(bool &running, bool &isPaused){}
-void MyWindow::handleEvent(void *eventptr, bool &running, bool &isPaused){}
 void MyWindow::closeWindow(){}
 void MyWindow::drawBackground(int colour){}
 void MyWindow::endDrawing(){}
@@ -18,7 +16,7 @@ int MyWindow::drawCircle(unsigned int col, int x, int y, int diam){return 1;}
 int MyWindow::drawString(unsigned int col, int x, int y, const char *stringToBe){return 1;}
 int MyWindow::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3){return 1;}
 int MyWindow::drawPolygon(unsigned int col, short count, Point2d *points, bool checks){return 1;}
-
+void MyWindow::getPendingEvents(int *eventTypes, u_int *parameters, int numberOfEvents){}
 bool MyWindow::visibleOnScreen(int x, int y){return false;}
 
 #endif
@@ -56,61 +54,6 @@ MyWindow::MyWindow(){
     *(static_cast<GC *>(gc)) = XCreateGC((static_cast<Display *>(display)),*(static_cast<Window *>(window)), 0, 0);
 
     rootWindow = new Window;
-}
-
-void MyWindow::handleEvents(bool &isRunning, bool &isPaused){
-    while(XPending((static_cast<Display *>(display)))){
-        XNextEvent((static_cast<Display *>(display)), static_cast<XEvent *>(event));
-        handleEvent(event, isRunning, isPaused);
-    }
-}
-
-void MyWindow::handleEvent(void *eventptr, bool &isRunning, bool &isPaused){
-    XEvent *event = static_cast<XEvent *>(eventptr);
-
-    if(event->type == Expose){
-        // std::cout << "Expose event\n";
-        renderer->draw();
-    }
-
-    else if(event->type == KeyPress){
-        // printf("Key pressed\n");
-        switch(event->xkey.keycode){
-            case KEY_ESCAPE: isRunning = false; /*printf("Escaped program\n");*/ break;
-            case KEY_SPACE: isPaused = !isPaused; /*isPaused ? printf("Paused\n") : printf("Unpaused\n");*/ break;
-            // Camera movements
-            case KEY_K: renderer->moveCamera(FORWARDS, Y_AXIS); break;
-            case KEY_I: renderer->moveCamera(BACKWARDS, Y_AXIS); break;
-            case KEY_L: renderer->moveCamera(FORWARDS, X_AXIS); break;
-            case KEY_J: renderer->moveCamera(BACKWARDS, X_AXIS); break;
-            case KEY_O: renderer->moveCamera(FORWARDS, Z_AXIS); break;
-            case KEY_P: renderer->moveCamera(BACKWARDS, Z_AXIS); break;
-            case KEY_OE: renderer->decreaseCameraMoveAmount(); break;
-            case KEY_AE: renderer->increaseCameraMoveAmount(); break;
-            // Camera rotations
-            case KEY_W: renderer->rotateCamera(1.0/180*PI, X_AXIS); break;
-            case KEY_S: renderer->rotateCamera(-1.0/180*PI, X_AXIS); break;
-            case KEY_D: renderer->rotateCamera(1.0/180*PI, Y_AXIS); break;
-            case KEY_A: renderer->rotateCamera(-1.0/180*PI, Y_AXIS); break;
-            case KEY_Q: renderer->rotateCamera(1.0/180*PI, Z_AXIS); break;
-            case KEY_E: renderer->rotateCamera(-1.0/180*PI, Z_AXIS); break;
-            case KEY_R: renderer->resetCameraOrientation(); break;
-            // Focus changes
-            case KEY_1: renderer->centreParent(); break;
-            case KEY_2: renderer->centreChild(); break;
-            case KEY_3: renderer->centrePrevious(); break;
-            case KEY_4: renderer->centreNext(); break;
-            case KEY_5: renderer->centrePreviousStarSystem(); break;
-            case KEY_6: renderer->centreNextStarSystem(); break;
-            case KEY_F: renderer->toggleCentre(); break;
-            // Speed changes
-            case KEY_PG_UP: renderer->increaseSimulationSpeed(); break;
-            case KEY_PG_DOWN: renderer->decreaseSimulationSpeed(); break;
-
-            /*default: printf("Key number %d was pressed\n", event.xkey.keycode);*/
-        }
-    }
-    return;
 }
 
 void MyWindow::closeWindow(){
@@ -305,10 +248,6 @@ bool MyWindow::visibleOnScreen(int x, int y){
     return (x >= 0 && x <= windowWidth && y >= 0 && y <= windowHeight);
 }
 #endif
-
-void MyWindow::setRenderer(Renderer *renderer){
-    this->renderer = renderer;
-}
 
 Point2d MyWindow::calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2){
     // We look at the vectors from p2 to the edges, f.e p2-(0/0) and p2-(windowWidth/0), and check if the vector p2-p1 is
@@ -649,4 +588,21 @@ int MyWindow::getWindowWidth(){
 }
 int MyWindow::getWindowHeight(){
     return windowHeight;
+}
+int MyWindow::getNumberOfPendingEvents(){
+    return XEventsQueued((static_cast<Display *>(display)), QueuedAlready);
+}
+void MyWindow::getPendingEvents(int *eventTypes, u_int *parameters, int numberOfEvents){
+    if (XEventsQueued((static_cast<Display *>(display)), QueuedAlready) < numberOfEvents){
+        eventTypes[0] = -1;
+        return;
+    }
+
+    for(int i=0;i<numberOfEvents;i++){
+        XNextEvent((static_cast<Display *>(display)), static_cast<XEvent *>(event));
+        eventTypes[i] = static_cast<XEvent *>(event)->type;
+        if (eventTypes[i] == KeyPress){
+            parameters[i] = static_cast<XEvent *>(event)->xkey.keycode;
+        }
+    }
 }

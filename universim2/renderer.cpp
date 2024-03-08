@@ -11,18 +11,13 @@
 // TODO: For background, make array for every pixel and add up brightness?
 
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate){
-    // printf("Renderer constructor begin\n");
     this->myWindow = myWindow;
     this->galaxies = galaxies;
     this->allObjects = allObjects;
-    this->myWindow->setRenderer(this);
     this->date = date;
     this->currentlyUpdatingOrDrawingLock = currentlyUpdatingOrDrawingLock;
     this->optimalTimeLocalUpdate = optimalTimeLocalUpdate;
-    // cameraPosition = PositionVector(0, 0, 10 * astronomicalUnit);
-    // cameraDirection = PositionVector(0, 0, -1);
-    // cameraPlaneVector1 = PositionVector(1, 0, 0);
-    // cameraPlaneVector2 = PositionVector(0, 1, 0);
+    // Initiate camera position
     cameraPosition = PositionVector(10 * astronomicalUnit, 0, 0);
     cameraDirection = PositionVector(-1, 0, 0);
     cameraPlaneVector1 = PositionVector(0, 1, 0);
@@ -1463,7 +1458,6 @@ void Renderer::addDotOnScreen(DrawObject *drawObject){
 }
 
 void Renderer::addObjectsOnScreen(std::vector<DrawObject*> *drawObjects){
-    // Still quite inefficient to lock for every single entry
     objectsOnScreenLock.lock();
     for(DrawObject *drawObject: *drawObjects){
         objectsOnScreen.push_back(drawObject);
@@ -1472,7 +1466,6 @@ void Renderer::addObjectsOnScreen(std::vector<DrawObject*> *drawObjects){
 }
 
 void Renderer::addDotsOnScreen(std::vector<DrawObject*> *drawObjects){
-    // Still quite inefficient to lock for every single entry
     dotsOnScreenLock.lock();
     for(DrawObject *drawObject: *drawObjects){
         dotsOnScreen.push_back(drawObject);
@@ -1491,6 +1484,62 @@ void Renderer::adjustThreadCount(int8_t adjustment){
     }
     rendererThreadCount = std::min(RENDERER_MAX_THREAD_COUNT, std::max(1, rendererThreadCount + adjustment));
     // printf("Adjusted rendererThreadCount to %d\n", rendererThreadCount);
+}
+
+void Renderer::handleEvents(bool &isRunning, bool &isPaused){
+    #define Expose 12
+    #define KeyPress 2
+
+    int numberOfPendingEvents = myWindow->getNumberOfPendingEvents();
+    int eventTypes[numberOfPendingEvents];
+    u_int parameters[numberOfPendingEvents];
+    myWindow->getPendingEvents(eventTypes, parameters, numberOfPendingEvents);
+    if(eventTypes[0] == -1){
+        // Something wrong happened: abort
+        return;
+    }
+    for(int i=0;i<numberOfPendingEvents;i++){
+        if(eventTypes[i] == Expose)
+        
+        switch(eventTypes[i]){
+            case Expose: draw(); break;
+            case KeyPress: 
+                switch(parameters[i]){
+                    case KEY_ESCAPE: isRunning = false; /*printf("Escaped program\n");*/ break;
+                    case KEY_SPACE: isPaused = !isPaused; /*isPaused ? printf("Paused\n") : printf("Unpaused\n");*/ break;
+                    // Camera movements
+                    case KEY_K: moveCamera(FORWARDS, Y_AXIS); break;
+                    case KEY_I: moveCamera(BACKWARDS, Y_AXIS); break;
+                    case KEY_L: moveCamera(FORWARDS, X_AXIS); break;
+                    case KEY_J: moveCamera(BACKWARDS, X_AXIS); break;
+                    case KEY_O: moveCamera(FORWARDS, Z_AXIS); break;
+                    case KEY_P: moveCamera(BACKWARDS, Z_AXIS); break;
+                    case KEY_OE: decreaseCameraMoveAmount(); break;
+                    case KEY_AE: increaseCameraMoveAmount(); break;
+                    // Camera rotations
+                    case KEY_W: rotateCamera(1.0/180*PI, X_AXIS); break;
+                    case KEY_S: rotateCamera(-1.0/180*PI, X_AXIS); break;
+                    case KEY_D: rotateCamera(1.0/180*PI, Y_AXIS); break;
+                    case KEY_A: rotateCamera(-1.0/180*PI, Y_AXIS); break;
+                    case KEY_Q: rotateCamera(1.0/180*PI, Z_AXIS); break;
+                    case KEY_E: rotateCamera(-1.0/180*PI, Z_AXIS); break;
+                    case KEY_R: resetCameraOrientation(); break;
+                    // Focus changes
+                    case KEY_1: centreParent(); break;
+                    case KEY_2: centreChild(); break;
+                    case KEY_3: centrePrevious(); break;
+                    case KEY_4: centreNext(); break;
+                    case KEY_5: centrePreviousStarSystem(); break;
+                    case KEY_6: centreNextStarSystem(); break;
+                    case KEY_F: toggleCentre(); break;
+                    // Speed changes
+                    case KEY_PG_UP: increaseSimulationSpeed(); break;
+                    case KEY_PG_DOWN: decreaseSimulationSpeed(); break;
+
+                    /*default: printf("Key number %d was pressed\n", event.xkey.keycode);*/
+                } break;
+        }
+    }
 }
 
 int Renderer::getWindowWidth(){
