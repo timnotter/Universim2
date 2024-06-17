@@ -18,6 +18,9 @@ class Renderer;
 class DrawObject{
 public:
     int colour;
+    int colourP1;
+    int colourP2;
+    int colourP3;
     long int x1;
     long int y1;
     long int x2;

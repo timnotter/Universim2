@@ -40,7 +40,10 @@
 #define TRANS_BLUE_COL 0x0000FF01
 #define LASTPOS_INIT_NUM 1000000000000000000.0
 
-#define MAX_TRIANGULATION_RESOLUTION 50
+// #define MAX_TRIANGULATION_RESOLUTION 50
+#define MAX_TRIANGULATION_RESOLUTION 25
+// #define MAX_TRIANGULATION_RESOLUTION 15
+// #define MAX_TRIANGULATION_RESOLUTION 4
 
 #define STANDARD_CAMERA_POSITION -1 * std::min(std::max(2 * centreObject->getRadius(), solarRadius/5), astronomicalUnit)
 
@@ -81,8 +84,10 @@
 #define KEY_6 15
 #define KEY_7 16
 #define KEY_8 17
+#define KEY_9 18
 
-static int debug = 0;
+// I don't remember what this was for. Thus it is not deleted
+// static int debug = 0;
 
 typedef struct CloseObject_s{
     StellarObject *object;
@@ -93,9 +98,7 @@ typedef struct CloseObject_s{
 // Functions for multithreading
 void calculateObjectPositionsMultiThread(int start, int amount, Renderer *renderer, int id);
 void updatePositionAtPointInTimeMultiThread(std::vector<StellarObject*> *allObjects, int start, int amount);
-void updateRenderFaceMultiThread(StellarObjectRenderFace *face, short axis, short direction, short resolution);
 void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject *object, std::vector<RenderTriangle*> *triangles, DrawObject *drawObject, int start, int amount, std::mutex *drawObjectLock);
-void getRenderTrianglesMultiThread(StellarObjectRenderFace *face, std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition, std::mutex *trianglesLock);
 
 void quicksort(int start, int end, std::vector<DrawObject*> *vector, int usedThreads, int maxThreads);
 int quicksortInsert(int start, int end, std::vector<DrawObject*> *vector);
@@ -147,6 +150,7 @@ private:
     int8_t rendererThreadCount;
 
 public:
+    bool test = 0;    
     Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate);
 
     // Draws waiting screen
@@ -163,6 +167,45 @@ public:
     void drawObjects();
     // Draws UI
     void drawUI();
+    // Draws point, if it is visible
+    // The colour should be a value between 0 and 0xFFFFFF. Returns -1 upon failure, 1 if nothing has to be drawn and 0 upon success
+    int drawPoint(unsigned int col, int x, int y);
+    // Changes line, such that it fits on the screen and then calls the draw function of the window to display it
+    // The colour should be a value between 0 and 0xFFFFFF. Returns -1 upon failure, 1 if nothing has to be drawn and 0 upon success
+    int drawLine(unsigned int col, int x1, int y1, int x2, int y2);
+    // Changes rect, such that it fits on the screen and then calls the draw function of the window to display it
+    // The colour should be a value between 0 and 0xFFFFFF. Returns -1 upon failure, 1 if nothing has to be drawn and 0 upon success
+    // Checks are NOT implemented-------------------------------------------TODO-------------------------------------------
+    int drawRect(unsigned int col, int x, int y, int width, int height);
+    // Calls the draw function of the window to display it
+    // The colour should be a value between 0 and 0xFFFFFF. Returns -1 upon failure, 1 if nothing has to be drawn and 0 upon success
+    // Checks are NOT implemented-------------------------------------------TODO-------------------------------------------
+    int drawCircle(unsigned int col, int x, int y, int diam);
+    // Displays string if it would be visible
+    // The colour should be a value between 0 and 0xFFFFFF. Returns -1 upon failure, 1 if nothing has to be drawn and 0 upon success
+    // Checks are NOT implemented-------------------------------------------TODO-------------------------------------------
+    int drawString(unsigned int col, int x, int y, const char *stringToBe);
+    // Changes triangle, such that it fits on the screen and then calls the draw function of the window to display it
+    // The colour should be a value between 0 and 0xFFFFFF. Returns -1 upon failure, 1 if nothing has to be drawn and 0 upon success
+    int drawTriangle(unsigned int col, unsigned int colourP1, unsigned int colourP2, unsigned int colourP3, int x1, int y1, int x2, int y2, int x3, int y3);
+    // No checks have been implemented. Always draws.
+    int drawPolygon(unsigned int col, short count, Point2d *points);
+    // Computes Phong shading for polygons, based upon a triangle that is not completely on the canvas.
+    // Inputs are points array, size of arrays, original triangle and original triangle colours. Last input is the colour of the triangle if it where to be drawn normally
+    int drawPhongPolygonOfTriangle(Point2d *points, int count, Point2d *originalTrianglePoints, unsigned int *colours, unsigned int col);
+    // Takes as input two points. The first hast to be off the canvas, the second can be on it. Returns the first input point, moved to the closest canvas intersection.
+    // If the intersection does not lie withing the connecting line between p1 and p2, it returns -1/-1
+    Point2d calculateEdgePointWithPoint1NotVisible(int x1, int y1, int x2, int y2);
+
+    // Assumes that the the points in the point array are convex and the next is always to the right of the previous
+    int drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible, Point2d *originalTrianglePoints, unsigned int *colours);
+    // Assumes that the the points in the point array are convex and the next is always to the right of the previous
+    int drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible, Point2d *originalTrianglePoints, unsigned int *colours);
+    // Assumes that the the points in the point array are convex and the next is always to the right of the previous
+    int drawTriangleAllNotVisible(unsigned int col, Point2d *points, Point2d *originalTrianglePoints, unsigned int *colours);
+
+    bool visibleOnScreen(int x, int y);
+
     // Sorts objectsOnScreen and then draws everything in the following order: dotsOnScreen, objectsOnScreen and then closeObjects
     void drawDrawObjects();
     // Either rotates camera around the centred object or rotates camera normally while not centring anything and recalculates transformation matrices
@@ -189,7 +232,6 @@ public:
     // Sets centre object to to reference object while not centring anything or enter "free roam mode" and unset centre object
     void toggleCentre();
 
-    bool visibleOnScreen(int x, int y);
     // Locks and adds single objects to objectsOnScreen vector
     // AVOID due to performance
     void addObjectOnScreen(DrawObject *drawObjects);
@@ -207,10 +249,8 @@ public:
     // Adjusts thread count of the renderer by (adjustment) if threadCount has not reached 1 or RENDERER_MAX_THREAD_COUNT
     void adjustThreadCount(int8_t adjustment);
 
-    // Polls all waiting events and resolves them by calling handleEvent onto them
+    // Polls all waiting events and resolves them
     void handleEvents(bool &running, bool &isPaused);
-    // Calls the underlying windwow function to get the event number and then resolves them
-    void handleEvent(void *eventptr, bool &running, bool &isPaused);
     
     // Getter
     int getWindowWidth();

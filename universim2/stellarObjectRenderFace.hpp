@@ -17,19 +17,20 @@ class StellarObject;
 class StellarObjectRenderFace {
 private:
     StellarObject *owner;
-    short axis;
-    short direction;
     short resolution;
-    PositionVector *points;
     std::vector<RenderTriangle*> renderTriangles;
+
+
+    // Rebuilding this class to store all 6 sides of the stellarObject at the same time
+
 
 public:
     StellarObjectRenderFace();
     StellarObjectRenderFace(StellarObject *owner);
     void initialise(StellarObject *owner);
     // StellarObjectRenderFace(StellarObject *owner, short axis, short direction, short resolution);
-    void updateRenderFace(short axis, short direction, short resolution);
-    void getRenderTriangles(std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition);
+    void updateRenderFaces(short resolution);
+    void getRenderTriangles(std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition, PositionVector cameraDirection);
 };
 
 #endif

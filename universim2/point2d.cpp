@@ -36,3 +36,7 @@ const char *Point2d::toString(){
 
     return pointString.c_str();
 }
+
+bool Point2d::operator == (Point2d position){
+    return (x == position.getX() && y == position.getY());
+}

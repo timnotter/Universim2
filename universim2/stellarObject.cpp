@@ -109,7 +109,7 @@ void StellarObject::place(){
 
     // If object is galactic core, place it anywhere with distance to (0/0/0) = meanDistance
     // printf("Trying to place %s\n", getName());
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if(type == GALACTIC_CORE){
         tryAgain:
         // printf("Trying...\n");
@@ -131,14 +131,14 @@ void StellarObject::place(){
         for(StellarObject *child: children){
             child->place();
             // printf("%s - position: (%s), velocity: (%s)\n", child->getName(), child->getPosition().toString(), child->getVelocity().toString());
-            child->calculateTotalMass();
+            // child->calculateTotalMass();
             long double childTotalMass = child->getTotalMass();
             tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
             childrenMomentum += (child->getVelocity()) * childTotalMass;
             childrenTotalMass += childTotalMass;
         }
         if(childrenTotalMass!=0) tempCentreOfMass /= childrenTotalMass;
-        calculateTotalMass();
+        // calculateTotalMass();
         // printf("Centre of mass of children of %s is (%s). ChildrenTotalMass: %Lf, Mass: %Lf\n", getName(), tempCentreOfMass.toString(), childrenTotalMass, mass);
         position.setX((centreOfMass.getX() * totalMass - tempCentreOfMass.getX() * childrenTotalMass) / mass);
         position.setY((centreOfMass.getY() * totalMass - tempCentreOfMass.getY() * childrenTotalMass) / mass);

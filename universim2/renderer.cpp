@@ -67,11 +67,21 @@ void Renderer::draw(){
     drawObjects();
     drawUI();
 
-    
+    // This is a red square in the middle of the screen
+    if(test){
+        drawLine(0xFF0000, 390, 290, 390, 310);
+        drawLine(0xFF0000, 390, 310, 410, 310);
+        drawLine(0xFF0000, 410, 310, 410, 290);
+        drawLine(0xFF0000, 410, 290, 390, 290);
+    }
+
     // XClearWindow(myWindow->getDisplay(), *(myWindow->getWindow()));          // Not neccessary, probably because of the swap
     // XdbeSwapInfo swap_info = {*(myWindow->getWindow()), 1};
     // XdbeSwapBuffers(myWindow->getDisplay(), &swap_info, 1);
     myWindow->endDrawing();
+
+
+    // printf("\n-------------------Finished drawing-------------------\n\n");
 }
 
 void Renderer::drawObjects(){
@@ -86,6 +96,7 @@ void Renderer::drawObjects(){
     std::vector<std::thread> threads;
 
     // Go through all objects and update their positionAtPointInTime
+    // We lock currentlyUpdatingOrDrawingLock, such that the update thread cannot do updates
     currentlyUpdatingOrDrawingLock->lock();
     for(int i=0;i<threadNumber-1;i++){
         threads.push_back(std::thread (updatePositionAtPointInTimeMultiThread, allObjects, i*amount, amount));
@@ -112,7 +123,8 @@ void Renderer::drawObjects(){
     // printf("Calculating Image took: %ld mics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
     // clock_gettime(CLOCK_MONOTONIC, &prevTime);
 
-    // Then we render close objects seperately
+    // Then we render close objects seperately. We don't use multithreading on this level, 
+    // we assume there are only few of them 
     // printf("Rendering %ld close objects\n", closeObjects.size());
     for(int i=0;i<closeObjects.size();i++){
         calculateCloseObject(closeObjects[i]->object, closeObjects[i]->distanceNewBasis, closeObjects[i]->size);
@@ -133,7 +145,19 @@ void Renderer::drawObjects(){
 // Thank you for this exact problem discription :)
 
 void Renderer::drawDrawObjects(){
+    // Sorting dots takes a comparetively long time. Up to 25ms for 100000 stars.
+    // But it fixes flickering of star concentrations
+
+    // struct timespec prevTime;
+	// struct timespec currTime;
+	// clock_gettime(CLOCK_MONOTONIC, &prevTime);
+    quicksort(0, dotsOnScreen.size(), &dotsOnScreen, 1, rendererThreadCount);
+    // clock_gettime(CLOCK_MONOTONIC, &currTime);
+    // printf("Sorting dots took: %ld mics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
     quicksort(0, objectsOnScreen.size(), &objectsOnScreen, 1, rendererThreadCount);
+    // clock_gettime(CLOCK_MONOTONIC, &currTime);
+    // printf("Sorting both vectors took: %ld mics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
+
     for(DrawObject *drawObject: dotsOnScreen){
         drawObject->draw(this);
     }
@@ -192,500 +216,569 @@ void Renderer::drawUI(){
 
 }
 
-// int Renderer::drawPoint(unsigned int col, int x, int y){
-//     XSetForeground(myWindow->getDisplay(), *(myWindow->getGC()), col);
-//     XDrawPoint(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), x, y);
-//     return 0;
-// }
+int Renderer::drawPoint(unsigned int col, int x, int y){
+    if(col<0 || col>0xFFFFFF) {
+        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        return -1;
+    }
+    if(x<0||x>myWindow->getWindowWidth()||y<0||y>myWindow->getWindowHeight())
+        return 1;
+    myWindow->drawPoint(col, x, y);
+    return 0;
+}
 
-// int Renderer::drawLine(unsigned int col, int x1, int y1, int x2, int y2){
-//     // if(!visibleOnScreen(x1, y1) && !visibleOnScreen(x2, y2)) return 0;
-//     // // Make sure no fancy visual bugs get displayed
-//     int testWindowWidth = windowWidth;                      // Fuck knows why this is neccessary
-//     int testWindowHeight = windowHeight;                    // Fuck knows why this is neccessary
-//     // // printf("Would draw line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//     // while(x1>2*testWindowWidth || x1<(-1 * testWindowWidth) || y1>2*testWindowHeight || y1<(-1 * testWindowHeight)){
-//     //     x1 = (x1 - testWindowWidth/2) / 2 + testWindowWidth/2;
-//     //     y1 = (y1 - testWindowHeight/2) / 2 + testWindowHeight/2;
-//     // }
-//     // while(x2>2*testWindowWidth || x2<(-1 * testWindowWidth) || y2>2*testWindowHeight || y2<(-1 * testWindowHeight)){
-//     //     x2 = (x2 - testWindowWidth/2) / 2 + testWindowWidth/2;
-//     //     y2 = (y2 - testWindowHeight/2) / 2 + testWindowHeight/2;
-//     // }
-//     // // printf("But now drawing line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//     // if(col == RED_COL) printf("Would draw line from %d, %d to %d, %d\n", x1, y1, x2, y2);
+int Renderer::drawLine(unsigned int col, int x1, int y1, int x2, int y2){
+    if(col<0 || col>0xFFFFFF) {
+        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        return -1;
+    }
 
-//     // New approach, cut lines
-//     bool p1Visible = visibleOnScreen(x1, y1);
-//     bool p2Visible = visibleOnScreen(x2, y2);
-//     Point2d edgePoint;
-//     // First handle case that both are not visible
-//     if(!p1Visible && !p2Visible){
-//         // printf("Would draw line from %d, %d to %d, %d ------------------------------\n", x1, y1, x2, y2);
-//         edgePoint = calculateEdgePointWithNoneVisible(x1, y1, x2, y2);
-//         if(edgePoint.getX() == -1 && edgePoint.getY() == -1) return 1;
-//         x1 = edgePoint.getX();
-//         y1 = edgePoint.getY();
-//         p1Visible = true;
-//         // printf("P1 and P2 not visible: now drawing line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//     }
+    // Make sure no fancy visual bugs get displayed
+    int windowWidth = myWindow->getWindowWidth();
+    int windowHeight = myWindow->getWindowHeight();
+    
+    bool p1Visible = visibleOnScreen(x1, y1);
+    bool p2Visible = visibleOnScreen(x2, y2);
+    Point2d edgePoint;
+    // First handle case that both are not visible
+    if(!p1Visible && !p2Visible){
+        edgePoint = calculateEdgePointWithPoint1NotVisible(x1, y1, x2, y2);
+        if(edgePoint.getX() == -1 && edgePoint.getY() == -1) return 1;
+        x1 = edgePoint.getX();
+        y1 = edgePoint.getY();
+        p1Visible = true;
+    }
 
-//     if(!p1Visible){
-//         // printf("Would draw line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//         edgePoint = calculateEdgePointWithOneVisible(x1, y1, x2, y2);
-//         x1 = edgePoint.getX();
-//         y1 = edgePoint.getY();
-//         // printf("P1 not visible: now drawing line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//     }
-//     else if(!p2Visible){
-//         // printf("Would draw line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//         edgePoint = calculateEdgePointWithOneVisible(x2, y2, x1, y1);
-//         x2 = edgePoint.getX();
-//         y2 = edgePoint.getY();
-//         // printf("P2 not visible: now drawing line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//     }
-//     // if(col == RED_COL) printf("Draw line from %d, %d to %d, %d\n", x1, y1, x2, y2);
-//     XSetForeground(myWindow->getDisplay(), *(myWindow->getGC()), col);
-//     XDrawLine(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), x1, y1, x2, y2);
-//     return 0;
-// }
+    if(!p1Visible){
+        edgePoint = calculateEdgePointWithPoint1NotVisible(x1, y1, x2, y2);
+        x1 = edgePoint.getX();
+        y1 = edgePoint.getY();
+    }
+    else if(!p2Visible){
+        edgePoint = calculateEdgePointWithPoint1NotVisible(x2, y2, x1, y1);
+        x2 = edgePoint.getX();
+        y2 = edgePoint.getY();
+    }
 
-// Point2d Renderer::calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2){
-//     // We look at the vectors from p2 to the edges, f.e p2-(0/0) and p2-(windowWidth/0), and check if the vector p2-p1 is
-//     // to the right or left of each vector (width the cross product). We find out which edge the line crosses
-//     // printf("Calculating edge point with one visible: starting points: (%d, %d), (%d, %d)\n", x1, y1, x2, y2);
-//     int xOriginVector = -x2;
-//     int yOriginVector = -y2;
-//     int xWidthVector = windowWidth - x2;
-//     int yWidthVector = -y2;
-//     int xWidthHeightVector = windowWidth - x2;
-//     int yWidthHeightVector = windowHeight - y2;
-//     int xHeightVector = -x2;
-//     int yHeightVector = windowHeight - y2;
-//     int xPointsVector = x1 - x2;
-//     int yPointsVector = y1 - y2;
-//     int crossProductOriginVector = xOriginVector * yPointsVector -  yOriginVector * xPointsVector;
-//     int crossProductWidthVector = xWidthVector * yPointsVector -  yWidthVector * xPointsVector;
-//     int crossProductWidthHeightVector = xWidthHeightVector * yPointsVector -  yWidthHeightVector * xPointsVector;
-//     int crossProductHeightVector = xHeightVector * yPointsVector -  yHeightVector * xPointsVector;
-//     int xDiff, yDiff;
-//     if(xPointsVector == 0){
-//         if(yPointsVector>0){
-//             crossProductOriginVector = -1;
-//             crossProductWidthVector = -1;
-//             crossProductWidthHeightVector = 1;
-//             crossProductHeightVector = -1;
-//         }
-//         else{
-//             crossProductOriginVector = 1;
-//             crossProductWidthVector = -1;
-//             crossProductWidthHeightVector = -1;
-//             crossProductHeightVector = -1;
-//         }
-//     }
-//     if(yPointsVector == 0){
-//         if(xPointsVector>0){
-//             crossProductOriginVector = -1;
-//             crossProductWidthVector = 1;
-//             crossProductWidthHeightVector = -1;
-//             crossProductHeightVector = -1;
-//         }
-//         else{
-//             crossProductOriginVector = -1;
-//             crossProductWidthVector = -1;
-//             crossProductWidthHeightVector = -1;
-//             crossProductHeightVector = 1;
-//         }
-//     }
-//     if(crossProductWidthVector > 0 && crossProductWidthHeightVector < 0){
-//         // printf("Edge x = windowWidth\n");
-//         // Edge x = windowWidth
-//         xDiff = windowWidth - x2;
-//         yDiff = yPointsVector * xDiff / xPointsVector;
-//         // printf("Danger past\n");
-//     }
-//     else if(crossProductOriginVector > 0 && crossProductWidthVector < 0){
-//         // printf("Edge y = 0\n");
-//         // Edge y = 0
-//         yDiff = -y2;
-//         xDiff = xPointsVector * yDiff / yPointsVector;
-//         // printf("Danger past\n");
-//     }
-//     else if(crossProductWidthHeightVector > 0 && crossProductHeightVector < 0){
-//         // printf("Edge y = windowHeight\n");
-//         // Edge y = windowHeight
-//         yDiff = windowHeight - y2;
-//         xDiff = xPointsVector * yDiff / yPointsVector;
-//         // printf("Danger past\n");
-//     }
-//     else{
-//         // printf("Edge x = 0\n");
-//         // Edge x = 0
-//         xDiff = -x2;
-//         yDiff = yPointsVector * xDiff / xPointsVector;
-//         // printf("Danger past\n");
-//     }
+    myWindow->drawLine(col, x1, y1, x2, y2);
+    return 0;
+}
 
-//     Point2d output(x2 + xDiff, y2 + yDiff);
+int Renderer::drawRect(unsigned int col, int x, int y, int width, int height){
+    if(col<0 || col>0xFFFFFF) {
+        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        return -1;
+    }
+    return myWindow->drawRect(col, x, y, width, height);
+}
 
-//     // printf("Calculated edge point with one visible: starting points: (%d, %d), (%d, %d), end point: (%d, %d)\n", x1, y1, x2, y2, output.x, output.y);
+int Renderer::drawCircle(unsigned int col, int x, int y, int diam){
+    if(col<0 || col>0xFFFFFF) {
+        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        return -1;
+    }
+    return myWindow->drawCircle(col, x, y, diam);
+}
 
-//     return output;
-// }
+int Renderer::drawString(unsigned int col, int x, int y, const char *stringToBe){
+    if(col<0 || col>0xFFFFFF) {
+        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        return -1;
+    }
+    return myWindow->drawString(col, x, y, stringToBe);
+}
 
-// Point2d Renderer::calculateEdgePointWithNoneVisible(int x1, int y1, int x2, int y2){
-//     // printf("Calculating edge point with none visible: (%d, %d), (%d, %d)\n", x1, y1, x2, y2);
-//     int testWindowWidth = windowWidth;                      // Fuck knows why this is neccessary
-//     int testWindowHeight = windowHeight;                    // Fuck knows why this is neccessary
+int Renderer::drawTriangle(unsigned int col, unsigned int colourP1, unsigned int colourP2, unsigned int colourP3, int x1, int y1, int x2, int y2, int x3, int y3){
+    if(col<0 || col>0xFFFFFF) {
+        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        return -1;
+    }
 
-//     Point2d output(-1, -1);
-//     // We initialise output as -1/-1. If we return that, we know that the function has failed and we can safely return
+    // printf("Trying to draw triangle with points: (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
+    Point2d points[3];
+    points[0] = Point2d(x1, y1);
+    points[1] = Point2d(x2, y2);
+    points[2] = Point2d(x3, y3);
+    Point2d originalTrianglePoints[3];
+    originalTrianglePoints[0] = Point2d(x1, y1);
+    originalTrianglePoints[1] = Point2d(x2, y2);
+    originalTrianglePoints[2] = Point2d(x3, y3);
+    unsigned int colours[3];
+    colours[0] = colourP1;
+    colours[1] = colourP2;
+    colours[2] = colourP3;
+    // printf("Trying to draw triangle with pointsInXpoint: (%d, %d), (%d, %d), (%d, %d)\n", points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
 
-//     // First we find out which edge is crossed first. We build the line equation and fill in the appropriate values, with which we hit one of the edges
-//     // x = x1 + s * (x2 - x1), y = y1 + s * (y2 - y1)
-//     double edgesS[4];
-//     if(x2 - x1 != 0){
-//         edgesS[0] = (0 - x1) / (x2 - x1 + 0.0);                     // X=0 edge
-//         edgesS[1] = (testWindowWidth - x1) / (x2 - x1 + 0.0);       // X=windowWidth edge
-//     }
-//     else{
-//         edgesS[0] = 2;
-//         edgesS[1] = 2;
-//     }
-//     if(y2 - y1 != 0){
-//         edgesS[2] = (0 - y1) / (y2 - y1 + 0.0);                     // Y=0 edge
-//         edgesS[3] = (testWindowHeight - y1) / (y2 - y1 + 0.0);      // Y=windowHeight edge
-//     }
-//     else{
-//         edgesS[2] = 2;
-//         edgesS[3] = 2;
-//     }
-//     // printf("The four esses: %f, %f, %f, %f, calcs: %d, %f, %f, %f\n", edgesS[0], edgesS[1], edgesS[2], edgesS[3], (testWindowWidth - x1), (x2 - x1 + 0.0), (testWindowWidth - x1) / (x2 - x1 + 0.0), (windowWidth - x1) / (x2 - x1 + 0.0));
+    // Here we make sure that the next point is always to the right of the previous. If we have this guarantee, drawing becomes way simpler
+    // We transform the coordinate system to one with 0/0 on the bottom left.
+    // We then check crossProduct of vector P1-P0 and P2-P0. If it is positive, P2-P0 is to the left. Thus we switch P1 and P2
+    int windowHeight = myWindow->getWindowHeight();
+    int p0Xt = points[0].getX();
+    int p0Yt = windowHeight - points[0].getY();
+    int p1Xt = points[1].getX();
+    int p1Yt = windowHeight - points[1].getY();
+    int p2Xt = points[2].getX();
+    int p2Yt = windowHeight - points[2].getY();
+    Point2d p0p1 = Point2d(p1Xt - p0Xt, p1Yt - p0Yt);
+    Point2d p0p2 = Point2d(p2Xt - p0Xt, p2Yt - p0Yt);
+    double crossProduct = p0p1.getX() * p0p2.getY() - p0p1.getY() * p0p2.getX();
+    if(crossProduct > 0){
+        // If crossProduct is negative, we flip the two points
+        // printf("Positive crossproduct p0: (%d, %d), p1: (%d, %d), p2: (%d, %d). p0p1: (%d, %d), p0p2: (%d, %d). CrossProduct: %f\n", points[0].getX(), points[0].getY(), points[1].getX(), points[1].getY(), points[2].getX(), points[2].getY(), p0p1.getX(), p0p1.getY(), p0p2.getX(), p0p2.getY(), crossProduct);
+        // printf("p0X: %d, p1X: %d, p0p1X: %d, p0p2X: %d\n", points[0].getX(), points[1].getX(), p0p1.getX(), p0p2.getX());
+        // printf("p0Y: %d, p1Y: %d, p0p1Y: %d, p0p2Y: %d\n", points[0].getY(), points[1].getY(), p0p1.getY(), p0p2.getY());
+        Point2d tempPoint = points[1];
+        points[1] = points[2];
+        points[2] = tempPoint;
 
-//     // The closest of these points, with s being positive, is the new point
-//     if(edgesS[0]<=0) edgesS[0] = 2;
-//     if(edgesS[1]<=0) edgesS[1] = 2;
-//     if(edgesS[2]<=0) edgesS[2] = 2;
-//     if(edgesS[3]<=0) edgesS[3] = 2;
-//     double smallestS = std::min(std::min(std::min(edgesS[0], edgesS[1]), edgesS[2]), edgesS[3]);
-//     // If this closest s is larger than 1, we don't have to draw anything
-//     // printf("Smallest s: %f\n", smallestS);
-//     if(smallestS>=1) return output;
-//     // Else select the smallest s than leads to a visible point
-//     int newX = 0;
-//     int newY = 0;
-//     double currentS = 2;
-//     for(int i=0;i<4;i++){
-//         if(edgesS[i]<0) continue;
-//         int tempX = x1 + edgesS[i] * (x2 - x1);
-//         int tempY = y1 + edgesS[i] * (y2 - y1);
-//         if(edgesS[i]<currentS && visibleOnScreen(tempX, tempY)){
-//             newX = tempX;
-//             newY = tempY;
-//             currentS = edgesS[i];
-//             // printf("Took edge number %d\n", i);
-//         }
-//     }
-//     // printf("Decided on final S: %f, output: (%d, %d)\n", currentS, output.x, output.y);
-//     if(currentS >= 1) return output;
-//     // Now replace the point (x1,y1) with the newly found point, which means p1 is now visible
-//     output.setX(newX);
-//     output.setY(newY);
-//     // printf("Calculated edge point with none visible. Returning: (%d, %d)\n", output.x, output.y);
-//     return output;
-// }
+        tempPoint = originalTrianglePoints[1];
+        originalTrianglePoints[1] = originalTrianglePoints[2];
+        originalTrianglePoints[2] = tempPoint;
 
-// int Renderer::drawRect(unsigned int col, int x, int y, int width, int height){
-//     XSetForeground(myWindow->getDisplay(), *(myWindow->getGC()), col);
-//     XFillRectangle(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), x, y, width, height);
-//     return 0;
-// }
+        unsigned int tempColour = colours[1];
+        colours[1] = colours[2];
+        colours[2] = tempColour;
+    }
+    // printf("Reordered and now drawing triangle: (%d, %d), (%d, %d), (%d, %d)\n", 
+    // points[0].getX(), points[0].getY(), points[1].getX(), points[1].getY(), points[2].getX(), points[2].getY());
 
-// int Renderer::drawCircle(unsigned int col, int x, int y, int diam){
-//     XSetForeground(myWindow->getDisplay(), *(myWindow->getGC()), col);
-//     XDrawArc(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), x-diam/2, y-diam/2, diam, diam, 0, 360 * 64);
-//     XFillArc(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), x-diam/2, y-diam/2, diam, diam, 0, 360 * 64);
-//     return 0;
-// }
+    bool p1Visible = visibleOnScreen(points[0].getX(), points[0].getY());
+    bool p2Visible = visibleOnScreen(points[1].getX(), points[1].getY());
+    bool p3Visible = visibleOnScreen(points[2].getX(), points[2].getY());
+    if(!p1Visible && !p2Visible && !p3Visible){
+        return drawTriangleAllNotVisible(col, points, originalTrianglePoints, colours);
+        // return 1;
+    }
+    if(!p1Visible && !p2Visible){
+        return drawTriangleTwoNotVisible(col, points, 2, originalTrianglePoints, colours);
+        // return 1;
+    }
+    if(!p1Visible && !p3Visible){
+        return drawTriangleTwoNotVisible(col, points, 1, originalTrianglePoints, colours);
+        // return 1;
+    }
+    if(!p3Visible && !p2Visible){
+        return drawTriangleTwoNotVisible(col, points, 0, originalTrianglePoints, colours);
+        // return 1;
+    }
+    if(!p1Visible){
+        // printf("Trying to draw triangle with points: (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
+        return drawTriangleOneNotVisible(col, points, 0, originalTrianglePoints, colours);
+        // return 1;
+    }
+    if(!p2Visible){
+        // printf("Trying to draw triangle with points: (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
+        return drawTriangleOneNotVisible(col, points, 1, originalTrianglePoints, colours);
+        // return 1;
+    }
+    if(!p3Visible){
+        // printf("Trying to draw triangle with points: (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
+        return drawTriangleOneNotVisible(col, points, 2, originalTrianglePoints, colours);
+        // return 1;
+    }
+    return drawPhongPolygonOfTriangle(points, 3, points, colours, col);
+    // return myWindow->drawTriangle(col, points[0].getX(), points[0].getY(), points[1].getX(), points[1].getY(), points[2].getX(), points[2].getY());
+    // return 1;
+}
 
-// int Renderer::drawString(unsigned int col, int x, int y, const char *stringToBe){
-//     XSetForeground(myWindow->getDisplay(), *(myWindow->getGC()), col);
-//     XDrawString(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), x, y, stringToBe, strlen(stringToBe));
-//     return 0;
-// }
+int Renderer::drawPolygon(unsigned int col, short count, Point2d *points){
+    return myWindow->drawPolygon(col, count, points);
+}
 
-// int Renderer::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3){
-//     // printf("Trying to draw triangle with points: (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
-//     Point2d points[3];
-//     points[0] = Point2d(x1, y1);
-//     points[1] = Point2d(x2, y2);
-//     points[2] = Point2d(x3, y3);
-//     // printf("Trying to draw triangle with pointsInXpoint: (%d, %d), (%d, %d), (%d, %d)\n", points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
+int Renderer::drawPhongPolygonOfTriangle(Point2d *points, int count, Point2d *originalTrianglePoints, unsigned int *colours, unsigned int col){
+    // printf("Drawing triangles with colours: (%x, %x, %x)\n", colours[0], colours[1], colours[2]);
 
-//     bool p1Visible = visibleOnScreen(x1, y1);
-//     bool p2Visible = visibleOnScreen(x2, y2);
-//     bool p3Visible = visibleOnScreen(x3, y3);
-//     // if(!p1Visible || !p2Visible || !p3Visible){
-//     //     return 0;   
-//     // }
-//     if(!p1Visible && !p2Visible && !p3Visible){
-//         drawTriangleAllNotVisible(col, points);
-//         return 0;
-//     }
-//     else if(!p1Visible && !p2Visible){
-//         drawTriangleTwoNotVisible(col, points, 2);
-//         return 0;
-//     }
-//     else if(!p1Visible && !p3Visible){
-//         drawTriangleTwoNotVisible(col, points, 1);
-//         return 0;
-//     }
-//     else if(!p3Visible && !p2Visible){
-//         drawTriangleTwoNotVisible(col, points, 0);
-//         return 0;
-//     }
-//     else if(!p1Visible){
-//         drawTriangleOneNotVisible(col, points, 0);
-//         return 0;
-//     }
-//     else if(!p2Visible){
-//         drawTriangleOneNotVisible(col, points, 1);
-//         return 0;
-//     }
-//     else if(!p3Visible){
-//         drawTriangleOneNotVisible(col, points, 2);
-//         return 0;
-//     }
+    // First we draw the whole polygon normally, to adjust for some holes that appear somehow. This has been fixed
+    // myWindow->drawPolygon(col, count, points);
+    // return 1;
 
-//     XPoint xPoints[3];
-//     xPoints[0].x = x1;
-//     xPoints[0].y = y1;
-//     xPoints[1].x = x2;
-//     xPoints[1].y = y2;
-//     xPoints[2].x = x3;
-//     xPoints[2].y = y3;
+    // We go through a box and check every point if it is inside our triangle.
+    // We do this by calculating the barycentric coordinates. If all of them lie between 0 and 1, the point is inside.
+    // We then use the barycentric coordinates to calculate the colour of every pixel
+    int minX = 100000;
+    int maxX = 0;
+    int minY = 100000;
+    int maxY = 0;
+    for(int i=0;i<count;i++){
+        minX = std::min(minX, points[i].getX());
+        maxX = std::max(maxX, points[i].getX());
+        minY = std::min(minY, points[i].getY());
+        maxY = std::max(maxY, points[i].getY());
+    }
+    long double lambda1;
+    long double lambda2;
+    long double lambda3;
+    int x1 = originalTrianglePoints[0].getX();
+    int y1 = originalTrianglePoints[0].getY();
+    int x2 = originalTrianglePoints[1].getX();
+    int y2 = originalTrianglePoints[1].getY();
+    int x3 = originalTrianglePoints[2].getX();
+    int y3 = originalTrianglePoints[2].getY();
+    for(int x=minX;x<=maxX;x++){
+        for(int y=minY;y<=maxY;y++){
+            long double devider = ((y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3)) * 1.0;
+            lambda1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / devider;
+            lambda2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / devider;
+            lambda3 = 1 - lambda1 - lambda2;
+            double epsilon = 0.000001;
+            if(lambda1 >= 0 - epsilon && lambda1 <= 1 + epsilon && lambda2 >= 0 - epsilon && lambda2 <= 1 + epsilon && lambda3 >= 0 - epsilon && lambda3 <= 1 + epsilon){
+                if(test == 1 && (lambda1 >= 1 - epsilon || lambda2 >= 1 - epsilon || lambda3 >= 1 - epsilon)){
+                    myWindow->drawPoint(0x00FF00, x, y);
+                    continue;
+                }
+                int redP1 = colours[0] >> 16;
+                int greenP1 = (colours[0] >> 8) & (0b11111111);
+                int blueP1 = colours[0] & (0b11111111);
+                int redP2 = colours[1] >> 16;
+                int greenP2 = (colours[1] >> 8) & (0b11111111);
+                int blueP2 = colours[1] & (0b11111111);
+                int redP3 = colours[2] >> 16;
+                int greenP3 = (colours[2] >> 8) & (0b11111111);
+                int blueP3 = colours[2] & (0b11111111);
+                // Make sure that the colour is at least the background colour
+                int colour = ((int)((redP1 * lambda1 + redP2 * lambda2 + redP3 * lambda3)) << 16)
+                + ((int)((greenP1 * lambda1 + greenP2 * lambda2 + greenP3 * lambda3)) << 8)
+                + (int)((blueP1 * lambda1 + blueP2 * lambda2 + blueP3 * lambda3));
+                // if(x==400 && y==300 && (lambda1 == 1 || lambda2 == 1 || lambda3 == 1)){
+                //     printf("point (%d, %d) has some lambda = 1. Colour: %x\n", x, y, colour);
+                // }
+                myWindow->drawPoint(colour, x, y);
+                // if(x == 400 && y == 300){
+                //     printf("For triangle (%d, %d), (%d, %d), (%d, %d) and point (%d, %d), the lambdas are %Lf, %Lf, %Lf.\nWith initial colours: %x, %x, %x, this leads to colour %x\n", x1, y1, x2, y2, x3, y3, x, y, lambda1, lambda2, lambda3, colours[0], colours[1], colours[2], colour);
+                // }
+            }
+            else continue;
+        }
+    }
+    return 0;
+}
 
-//     XSetForeground(myWindow->getDisplay(), *(myWindow->getGC()), col);
-//     XFillPolygon(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), xPoints, 3, Convex, CoordModeOrigin);
-//     // printf("Drawing triangle in renderer (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
-//     // XDrawPolygon(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), points, 3, Convex, CoordModeOrigin);
-//     // drawLine(BLACK_COL, x1, y1, x2, y2);
-//     // drawLine(BLACK_COL, x1, y1, x3, y3);
-//     // drawLine(BLACK_COL, x3, y3, x2, y2);
-//     return 0;
-// }
+Point2d Renderer::calculateEdgePointWithPoint1NotVisible(int x1, int y1, int x2, int y2){
+    // printf("Calculating edge point with p1 visible: (%d, %d), (%d, %d)\n", x1, y1, x2, y2);
+    int windowWidth = myWindow->getWindowWidth();
+    int windowHeight = myWindow->getWindowHeight();
 
-// int Renderer::drawPolygon(unsigned int col, short count, Point2d *points, bool checks){
-//     // ------------------------------------------------------------------- TODO -------------------------------------------------------------------
-//     // If the polygon does not come from the drawTriangle function, we need some checks to catch anomalies
-//     if(checks){
+    Point2d output(-1, -1);
+    if(x1 == x2 && y1 == y2){
+        return output;
+    }
+    // We initialise output as -1/-1. If we return that, we know that the function has failed, meaning that the line does not intersect the canvas
 
-//     }
+    // First we find out which edge is crossed first. We build the line equation and fill in the appropriate values, with which we hit one of the edges
+    // x = x1 + s * (x2 - x1), y = y1 + s * (y2 - y1)
+    // If the line intersects the respective edge with an s larger than 1, we know the intersection does not lie inbetween the two points, and is therefore discarded
+    double edgesS[4];
+    if(x2 - x1 != 0){
+        edgesS[0] = (0 - x1) / (x2 - x1 + 0.0);                 // X=0 edge
+        edgesS[1] = (windowWidth - x1) / (x2 - x1 + 0.0);       // X=windowWidth edge
+    }
+    else{
+        edgesS[0] = 2;
+        edgesS[1] = 2;
+    }
+    if(y2 - y1 != 0){
+        edgesS[2] = (0 - y1) / (y2 - y1 + 0.0);                 // Y=0 edge
+        edgesS[3] = (windowHeight - y1) / (y2 - y1 + 0.0);      // Y=windowHeight edge
+    }
+    else{
+        edgesS[2] = 2;
+        edgesS[3] = 2;
+    }
+    // The closest of these points, with s being positive, is the new point
+    if(edgesS[0]<0) edgesS[0] = 2;
+    if(edgesS[1]<0) edgesS[1] = 2;
+    if(edgesS[2]<0) edgesS[2] = 2;
+    if(edgesS[3]<0) edgesS[3] = 2;
+    double smallestS = std::min(std::min(std::min(edgesS[0], edgesS[1]), edgesS[2]), edgesS[3]);
+    // If this closest s is larger than 1, we don't have to draw anything
+    if(smallestS>1){
+        // printf("------------------------------------------------------\n");
+        // printf("Searching for intersection between (%d, %d) and (%d, %d)\n", x1, y1, x2, y2);
+        // printf("(0 - y1) / (y2 - y1 + 0.0): %f\n", (0 - y1) / (y2 - y1 + 0.0));
+        // printf("Returning, smallestS > 1. Ses are: %f, %f, %f, %f\n", edgesS[0], edgesS[1], edgesS[2], edgesS[3]);
+        // printf("------------------------------------------------------\n");
+        return output;
+    }
+    // Else select the smallest s than leads to a visible point
+    int newX = -1;
+    int newY = -1;
+    double currentS = 2;
+    for(int i=0;i<4;i++){
+        if(edgesS[i]>1) continue;
+        int tempX = x1 + edgesS[i] * (x2 - x1);
+        int tempY = y1 + edgesS[i] * (y2 - y1);
+        if(edgesS[i]<currentS && visibleOnScreen(tempX, tempY)){
+            newX = tempX;
+            newY = tempY;
+            currentS = edgesS[i];
+            // printf("Took edge number %d\n", i);
+        }
+    }
+    // printf("Decided on final S: %f, new Point: (%d, %d)\n", currentS, newX, newY);
+    if(currentS > 1){
+        // printf("Returning, currentS > 1\n");
+        return output;
+    }
+    // Now replace the point (x1,y1) with the newly found point, which means p1 is now visible
+    output.setX(newX);
+    output.setY(newY);
+    // myWindow->drawLine(0xFF0000, newX, newY, x2, y2);
+    // printf("Calculated edge point with none visible. Returning: (%d, %d)\n", output.getX(), output.getY());
+    if(output.getX() == -1 && output.getY() == -1){
+        printf("Output still (-1/-1). Ses are: %f, %f, %f, %f\n", edgesS[0], edgesS[1], edgesS[2], edgesS[3]);
+    }
+    return output;
+}
 
-//     XPoint xPoints[count];
-//     for(int i=0;i<count;i++){
-//         xPoints[i].x = points[i].getX();
-//         xPoints[i].y = points[i].getY();
-//     }
+int Renderer::drawTriangleAllNotVisible(unsigned int col, Point2d *points, Point2d *originalTrianglePoints, unsigned int *colours){
+    // printf("Drawing all not visible with points: (%s), (%s), (%s)\n", points[0].toString(), points[1].toString(), points[2].toString());
+    int windowWidth = myWindow->getWindowWidth();
+    int windowHeight = myWindow->getWindowHeight();
 
 
-//     XSetForeground(myWindow->getDisplay(), *(myWindow->getGC()), col);
-//     XFillPolygon(myWindow->getDisplay(), *(myWindow->getBackBuffer()), *(myWindow->getGC()), xPoints, count, Convex, CoordModeOrigin);
-//     // for(int i=0;i<count;i++){
-//     //     // printf("Trying to draw line from (%d, %d) to (%d, %d)\n", points[i].x, points[i].y, points[(i+1)%count].x, points[(i+1)%count].y);
-//     //     drawLine(RED_COL, points[i].getX(), points[i].getY(), points[(i+1)%count].getX(), points[(i+1)%count].getY());
-//     // }
-//     return 0;
-// }
+    // Checks if all triangle is trivially not on canvas 
+    if((points[0].getX()<0 && points[1].getX()<0 && points[2].getX()<0) ||
+    (points[0].getY()<0 && points[1].getY()<0 && points[2].getY()<0) ||
+    (points[0].getX()>windowWidth && points[1].getX()>windowWidth && points[2].getX()>windowWidth) ||
+    (points[0].getY()>windowHeight && points[1].getY()>windowHeight && points[2].getY()>windowHeight)){
+        return 1;
+    }
 
-// int Renderer::drawTriangleAllNotVisible(unsigned int col, Point2d *points){
-//     // printf("Drawing all not visible with points: (%s), (%s), (%s)\n", points[0].toString(), points[1].toString(), points[2].toString());
-//     int testWindowWidth = windowWidth;                      // Fuck knows why this is neccessary
-//     int testWindowHeight = windowHeight;                    // Fuck knows why this is neccessary
-//     if((points[0].getX()<0 && points[1].getX()<0 && points[2].getX()<0) ||
-//     (points[0].getY()<0 && points[1].getY()<0 && points[2].getY()<0) ||
-//     (points[0].getX()>testWindowWidth && points[1].getX()>testWindowWidth && points[2].getX()>testWindowWidth) ||
-//     (points[0].getY()>testWindowHeight && points[1].getY()>testWindowHeight && points[2].getY()>testWindowHeight)){
-//         // printf("Not visible--------------------\n");
-//         return 1;
-//     }
+    // Check if they are all on the same point
+    // if(points[0] == points[1] && points[0] == points[2]){
+    //     drawPoint(col, points[0].getX(), points[0].getY());
+    //     return 0;
+    // }
+    
+    // printf("Drawing all not visible with points: (%d, %d), (%d, %d), (%d, %d)\n", points[0].getX(), points[0].getY(), points[1].getX(), points[1].getY(), points[2].getX(), points[2].getY());
 
-//     std::vector<Point2d> drawPointsVector;
-//     Point2d drawPoints[5];
-//     Point2d edgePoint;
-//     Point2d edgePoint2;
-//     // Only relevant for case where only ond line intersects canvas
-//     short indexOfPointNotUsed;
-//     // First we go through all three point pairs and check if the line between them intersects the canvas.
-//     for(int i=0;i<3;i++){
-//         edgePoint = calculateEdgePointWithNoneVisible(points[i].getX(), points[i].getY(), points[(i+1)%3].getX(), points[(i+1)%3].getY());
-//         // printf("Edge point i = %d: (%d, %d)\n", i, edgePoint.x, edgePoint.y);
-//         if(edgePoint.getY() == -1 && edgePoint.getY() == -1) continue;
-//         edgePoint2 = calculateEdgePointWithOneVisible(points[(i+1)%3].getX(), points[(i+1)%3].getY(), edgePoint.getX(), edgePoint.getY());
-//         drawPointsVector.push_back(edgePoint);
-//         drawPointsVector.push_back(edgePoint2);
-//         indexOfPointNotUsed = (i+2)%3;
-//     }
-//     // If only one line intersected the canvas, we know that we have to add at least one corner, so that we can draw a triangle
-//     // If we have no intersections, we don't draw the triangle, else we draw the polygon with the found points on the edges
-//     int drawPointsVectorSize = drawPointsVector.size();
-//     if(drawPointsVectorSize == 0) return 1;
-//     if(drawPointsVectorSize == 2){
-//         // printf("Drawing triangle with only two intersection points: (%d, %d), (%d, %d)\n", drawPointsVector[0].x, drawPointsVector[0].y, drawPointsVector[1].x, drawPointsVector[1].y);
-//         // First we check if the third, unused point is to the right or left of the line going through the intersect points
-//         // For that we insert the x value of the unused point into the line equation.
-//         // Equation: y = m * x + y0
-//         int xDiff = drawPointsVector[1].getX() - drawPointsVector[0].getX();
-//         int yDiff = drawPointsVector[1].getY() - drawPointsVector[0].getY();
+    std::vector<Point2d> drawPointsVector;
+    Point2d drawPoints[7];
+    Point2d edgePoint;
+    Point2d edgePoint2;
+    // Only relevant for case where only one line intersects canvas
+    short indexOfPointNotUsed;
+    // First we go through all three point pairs and check if the line between them intersects the canvas (twice)
+    // If yes, we add both intersectionpoints to the drawPoints array
+    for(int i=0;i<3;i++){
+        // printf("Calling Function from AllNotVisible\n");
+        edgePoint = calculateEdgePointWithPoint1NotVisible(points[i].getX(), points[i].getY(), points[(i+1)%3].getX(), points[(i+1)%3].getY());
+        // printf("Finished\n");
+        // printf("Edge point i = %d: (%d, %d)\n", i, edgePoint.x, edgePoint.y);
+        if(edgePoint.getY() == -1 && edgePoint.getY() == -1) continue;
+        // printf("Calling Function from AllNotVisible\n");
+        edgePoint2 = calculateEdgePointWithPoint1NotVisible(points[(i+1)%3].getX(), points[(i+1)%3].getY(), edgePoint.getX(), edgePoint.getY());
+        // printf("Finished\n");
+        drawPointsVector.push_back(edgePoint);
+        drawPointsVector.push_back(edgePoint2);
+        indexOfPointNotUsed = (i+2)%3;
+    }
+    // If only one line intersected the canvas, we know that we have to add at least one canvas corner, so that we can draw a triangle
+    // If we have no intersections, we don't draw the triangle, else we draw the polygon with the found points on the edges
+    int drawPointsVectorSize = drawPointsVector.size();
+    if(drawPointsVectorSize == 0) {
+        // printf("No intersection line exists\n");
+        return 1;
+    }
+    // else{
+    //     printf("Intersection points generated. Points are: ");
+    //     for(int i=0;i<drawPointsVector.size()-1;i++){
+    //         printf("(%s), ", drawPointsVector[i].toString());
+    //     }
+    //     printf("(%s)\n", drawPointsVector[drawPointsVector.size()-1].toString());
+    // }
 
-//         if(xDiff==0){
-//             return 1;
-//         }
+    Point2d corners[4];
+    corners[0] = Point2d(windowWidth, 0);
+    corners[1] = Point2d(windowWidth, windowHeight);
+    corners[2] = Point2d(0, windowHeight);
+    corners[3] = Point2d(0, 0);
 
-//         double slope = (yDiff) / (xDiff + 0.0);
-//         // printf("Slope: %f = (%d-%d) / (%d-%d)\n", slope, drawPointsVector[1].y, drawPointsVector[0].y, drawPointsVector[1].x, drawPointsVector[0].x);
-//         double y0 = drawPointsVector[0].getY() + (-drawPointsVector[0].getX())/(xDiff) * yDiff;
-//         // printf("y0: %f = %d + (-%d)/%d * %d\n", y0, drawPointsVector[0].y, drawPointsVector[0].x, xDiff, yDiff);
+    // If the line from an intersection to a point is on another canvas edge than the next intersection point, we need to add all the corners inbetween
 
-//         // No we check the sign of the y value comparison of the unused point;
-//         double yLine = slope * points[indexOfPointNotUsed].getX() + y0;
-//         short sign = (points[indexOfPointNotUsed].getY() - yLine) / (std::abs(points[indexOfPointNotUsed].getY() - yLine));
-//         // printf("Point (%d, %d) has sign %d for line from (%d, %d) to (%d, %d) with equation y = %f * x + %f\n", points[indexOfPointNotUsed].x, points[indexOfPointNotUsed].y,
-//         // sign, drawPointsVector[0].x, drawPointsVector[0].y, drawPointsVector[1].x, drawPointsVector[1].y, slope, y0);
+    int arrayIndex = 0;
+    for(int pointIndex = 1;pointIndex<drawPointsVectorSize;pointIndex+=2){
+        drawPoints[arrayIndex++] = drawPointsVector[pointIndex-1];
+        drawPoints[arrayIndex++] = drawPointsVector[pointIndex];
 
-//         // Now we go through all points, beginning with the one directly to the right of the second point
+        int p1X = drawPointsVector[pointIndex].getX();
+        int p1Y = drawPointsVector[pointIndex].getY();
+        int p2X = drawPointsVector[(pointIndex+1)%drawPointsVectorSize].getX();
+        int p2Y = drawPointsVector[(pointIndex+1)%drawPointsVectorSize].getY();
 
-//         Point2d corners[4];
-//         corners[0] = Point2d(testWindowWidth, 0);
-//         corners[1] = Point2d(testWindowWidth, testWindowHeight);
-//         corners[2] = Point2d(0, testWindowHeight);
-//         corners[3] = Point2d(0, 0);
-//         // printf("Corners: (%d, %d), (%d, %d), (%d, %d), (%d, %d)\n", corners[0].x, corners[0].y, corners[1].x, corners[1].y, corners[2].x, corners[2].y, corners[3].x, corners[3].y);
-//         short startIndex;;
-//         if(drawPoints[0].getY() == 0) startIndex = 0;
-//         else if(drawPoints[0].getX() == testWindowWidth) startIndex = 1;
-//         else if(drawPoints[0].getY() == testWindowHeight) startIndex = 2;
-//         else startIndex = 3;
-//         short cornerSign;
-//         double cornerYLine;
-//         for(int i=0;i<4;i++){
-//             cornerYLine = slope * corners[(i + startIndex)%4].getX() + y0;
-//             cornerSign = (corners[(i + startIndex)%4].getY() - cornerYLine) / (std::abs(corners[(i + startIndex)%4].getY() - cornerYLine));
-//             // printf("Corner (%d, %d) has sign %d for line from (%d, %d) to (%d, %d) with equation y = %f * x + %f\n", corners[(i + startIndex)%4].x, corners[(i + startIndex)%4].y,
-//             // cornerSign, drawPointsVector[0].x, drawPointsVector[0].y, drawPointsVector[1].x, drawPointsVector[1].y, slope, y0);
-//             if(cornerSign == sign){
-//                 // printf("Adding corner (%d, %d)\n", corners[(i + startIndex)%4].x, corners[(i + startIndex)%4].y);
-//                 drawPointsVector.push_back(corners[(i + startIndex)%4]);
-//             }
-//         }
-//     }
-//     drawPointsVectorSize = drawPointsVector.size();
-//     // printf("Drawing polygon with points: ");
-//     for(int i=0;i<drawPointsVectorSize;i++){
-//         drawPoints[i] = drawPointsVector[i];
-//         // printf("(%d, %d) ", drawPoints[i].x, drawPoints[i].y);
-//     }
-//     // printf("\n");
-//     drawPolygon(col, drawPointsVectorSize, drawPoints);
-//     // printf("Drawn all not visible with points: (%s), (%s), (%s)--------------------\n", points[0].toString(), points[1].toString(), points[2].toString());
-//     return 0;
-// }
+        if((p1X == p2X && p2X == 0) || (p1X == p2X && p2X == windowWidth) || (p1Y == p2Y && p2Y == 0) || (p1Y == p2Y && p2Y == windowHeight)){
+            // Here they are on the same edge, thus we add nothing
+            continue;
+        }
+        else{
+            // Here they are not on the same edge
+            // printf("We want to draw a triangle with no visible points and we would have to add an edge!!!\n");
+            // Because in the beginning we made sure that the next point is always to the right of the previous, we can just cycle through the corners clockwise
+            short startIndex;
+            if(p1Y == 0) startIndex = 0;
+            else if(p1X == windowWidth) startIndex = 1;
+            else if(p1Y == windowHeight) startIndex = 2;
+            else startIndex = 3;
+            short endIndex;
+            if(p2Y == 0) endIndex = 0;
+            else if(p2X == windowWidth) endIndex = 1;
+            else if(p2Y == windowHeight) endIndex = 2;
+            else endIndex = 3;
 
-// int Renderer::drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible){
-//     // printf("Drawing two not visible with points: (%s), (%s), (%s)\n", points[0].toString(), points[1].toString(), points[2].toString());
-//     int testWindowWidth = windowWidth;                      // Fuck knows why this is neccessary
-//     int testWindowHeight = windowHeight;                    // Fuck knows why this is neccessary
-//     Point2d drawPoints[5];
-//     drawPoints[0] = points[(indexVisible)];
-//     // First we find the points which intersect
-//     Point2d intersect1 = calculateEdgePointWithOneVisible(points[(indexVisible+1)%3].getX(), points[(indexVisible+1)%3].getY(), points[indexVisible].getX(), points[indexVisible].getY());
-//     Point2d intersect2 = calculateEdgePointWithOneVisible(points[(indexVisible+2)%3].getX(), points[(indexVisible+2)%3].getY(), points[indexVisible].getX(), points[indexVisible].getY());
+            for(int i = startIndex; i != endIndex; i=((i+1)%4)){
+                drawPoints[arrayIndex++] = corners[i];
+            }
+        }
+    }
 
-//     if(intersect1.getX() == intersect2.getX() || intersect1.getY() == intersect2.getY()){
-//         // printf("Case two points not visible, two intersection points, which are on the same edge\n");
-//         // This means the intersection points are on the same edge
-//         drawPoints[1] = intersect2;
-//         drawPoints[2] = intersect1;
-//         drawPolygon(col, 3, drawPoints);
-//         return 0;
-//     }
-//     else{
-//         // Intersections points are not on the same edge. Now we have to check if the line between the invisible points intersects the canvas
-//         Point2d intersect3 = calculateEdgePointWithNoneVisible(points[(indexVisible+1)%3].getX(), points[(indexVisible+1)%3].getY(), points[(indexVisible+2)%3].getX(), points[(indexVisible+2)%3].getY());
-//         // printf("Intersectionpoint of invisible points: (%d, %d)\n", intersect3.x, intersect3.y);
-//         if(intersect3.getX() != -1 && intersect3.getY() != -1){
-//             // printf("Case two points not visible, four intersection points, which are not on the same edge\n");
-//             // Case line intersects canvas
-//             Point2d intersect4 = calculateEdgePointWithOneVisible(points[(indexVisible+2)%3].getX(), points[(indexVisible+2)%3].getY(), intersect3.getX(), intersect3.getY());
-//             drawPoints[1] = intersect1;
-//             drawPoints[2] = intersect3;
-//             drawPoints[3] = intersect4;
-//             drawPoints[4] = intersect2;
-//             drawPolygon(col, 5, drawPoints);
-//             // printf("Drawn two not visible with points: (%d, %d), (%d, %d), (%d, %d)--------------------\n", points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
-//             return 0;
-//         }
-//         else if(intersect1.getX() == 0 || intersect1.getX() == testWindowWidth){
-//             drawPoints[1] = intersect2;
-//             Point2d corner(intersect1.getX(), intersect2.getY());
-//             drawPoints[2] = corner;
-//             drawPoints[3] = intersect1;
-//             // printf("Case two points not visible, two intersection points, which are not on the same edge, corner %d, %d included\n", corner.x, corner.y);
-//         }
-//         else{
-//             drawPoints[1] = intersect2;
-//             Point2d corner(intersect2.getX(), intersect1.getY());
-//             drawPoints[2] = corner;
-//             drawPoints[3] = intersect1;
-//             // printf("Case two points not visible, two intersection points, which are not on the same edge, corner %d, %d included\n", corner.x, corner.y);
-//         }
-//         drawPolygon(col, 4, drawPoints);
-//     }
-//     // printf("Drawn two not visible with points: (%s), (%s), (%s)--------------------\n", points[0].toString(), points[1].toString(), points[2].toString());
-//     return 0;
-// }
+    // printf("Converted all not visible to polygon. Points are: ");
+    // for(int i=0;i<arrayIndex-1;i++){
+    //     printf("(%s), ", drawPoints[i].toString());
+    // }
+    // printf("(%s). ArrayIndex = %d\n", drawPoints[arrayIndex-1].toString(), arrayIndex);
 
-// int Renderer::drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible){
-//     // printf("Drawing one not visible with points: (%s), (%s), (%s)\n", points[0].toString(), points[1].toString(), points[2].toString());
-//     int testWindowWidth = windowWidth;                      // Fuck knows why this is neccessary
-//     int testWindowHeight = windowHeight;                    // Fuck knows why this is neccessary
-//     Point2d drawPoints[5];
-//     drawPoints[0] = points[(indexNotVisible+1)%3];
-//     drawPoints[1] = points[(indexNotVisible+2)%3];
-//     // First we find the points which intersect
-//     Point2d intersect1 = calculateEdgePointWithOneVisible(points[indexNotVisible].getX(), points[indexNotVisible].getY(), points[(indexNotVisible+1)%3].getX(), points[(indexNotVisible+1)%3].getY());
-//     Point2d intersect2 = calculateEdgePointWithOneVisible(points[indexNotVisible].getX(), points[indexNotVisible].getY(), points[(indexNotVisible+2)%3].getX(), points[(indexNotVisible+2)%3].getY());
-//     // printf("One Point not visible intersection points: (%d, %d), (%d, %d)\n", intersect1.x, intersect1.y, intersect2.x, intersect2.y);
-//     if(intersect1.getX() == intersect2.getX() || intersect1.getY() == intersect2.getY()){
-//         // printf("Case one point not visible, two intersection points, which are on the same edge\n");
-//         // This means the intersection points are on the same edge
-//         drawPoints[2] = intersect2;
-//         drawPoints[3] = intersect1;
-//         // printf("Drawing polygon: (%d, %d), (%d, %d), (%d, %d), (%d, %d)\n", drawPoints[0].x, drawPoints[0].x, drawPoints[1].x, drawPoints[1].y, drawPoints[2].x, drawPoints[2].y, drawPoints[3].x, drawPoints[3].y);
-//         drawPolygon(col, 4, drawPoints);
-//         // printf("Drawn one not visible with points: (%d, %d), (%d, %d), (%d, %d)--------------------\n", points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
-//         return 0;
-//     }
-//     else if(intersect1.getX() == 0 || intersect1.getX() == testWindowWidth){
-//         drawPoints[2] = intersect2;
-//         Point2d corner(intersect1.getX(), intersect2.getY());
-//         drawPoints[3] = corner;
-//         drawPoints[4] = intersect1;
-//         // printf("Case one point not visible, two intersection points, which are not on the same edge, corner %d, %d included\n", corner.x, corner.y);
-//         // printf("Intersect points: (%d, %d), (%d, %d)\n", intersect1.x, intersect1.y, intersect2.x, intersect2.y);
-//     }
-//     else{
-//         drawPoints[2] = intersect2;
-//         Point2d corner(intersect2.getX(), intersect1.getY());
-//         drawPoints[3] = corner;
-//         drawPoints[4] = intersect1;
-//         // printf("Case one point not visible, two intersection points, which are not on the same edge, corner %d, %d included\n", corner.x, corner.y);
-//     }
-//     // printf("Drawing polygon: (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)\n", drawPoints[0].x, drawPoints[0].x, drawPoints[1].x, drawPoints[1].y, drawPoints[2].x, drawPoints[2].y, drawPoints[3].x, drawPoints[3].y, drawPoints[4].x, drawPoints[4].y);
-//     drawPolygon(col, 5, drawPoints);
-//     // printf("Drawn one not visible with points: (%s), (%s), (%s)--------------------\n", points[0].toString(), points[1].toString(), points[2].toString());
-//     return 0;
-// }
+    // printf("Drawn all not visible with points: (%s), (%s), (%s)--------------------\n", points[0].toString(), points[1].toString(), points[2].toString());
+    // printf("Left drawTriangleAllNotVisible\n");
+
+    return drawPhongPolygonOfTriangle(drawPoints, arrayIndex, originalTrianglePoints, colours, col);
+    // return myWindow->drawPolygon(col, arrayIndex, drawPoints);
+}
+
+int Renderer::drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible, Point2d *originalTrianglePoints, unsigned int *colours){
+    // printf("Entered drawTriangleTwoNotVisible\n");
+    // printf("Drawing two not visible with points: (%s), (%s), (%s)\n", points[0].toString(), points[1].toString(), points[2].toString());
+    int windowWidth = myWindow->getWindowWidth();
+    int windowHeight = myWindow->getWindowHeight();
+    Point2d drawPoints[6];
+    drawPoints[0] = points[(indexVisible)];
+    // First we find the points which intersect
+    // printf("Calling Function from TwoNotVisible\n");
+    Point2d intersect1 = calculateEdgePointWithPoint1NotVisible(points[(indexVisible+1)%3].getX(), points[(indexVisible+1)%3].getY(), points[indexVisible].getX(), points[indexVisible].getY());
+    // printf("Finished\n");
+    // printf("Calling Function from TwoNotVisible\n");
+    Point2d intersect2 = calculateEdgePointWithPoint1NotVisible(points[(indexVisible+2)%3].getX(), points[(indexVisible+2)%3].getY(), points[indexVisible].getX(), points[indexVisible].getY());
+    // printf("Finished\n");
+
+    if(intersect1.getX() == intersect2.getX() || intersect1.getY() == intersect2.getY()){
+        // printf("Case two points not visible, two intersection points, which are on the same edge\n");
+        // This means the intersection points are on the same edge
+        drawPoints[0] = points[indexVisible];
+        drawPoints[1] = intersect1;
+        drawPoints[2] = intersect2;
+        drawPhongPolygonOfTriangle(drawPoints, 3, originalTrianglePoints, colours, col);
+        // myWindow->drawTriangle(col, points[(indexVisible)].getX(), points[(indexVisible)].getY(), intersect1.getX(), intersect1.getY(), intersect2.getX(), intersect2.getY());
+        // myWindow->drawTriangle(col, points[(indexVisible)].getX(), points[(indexVisible)].getY(), intersect1.getX(), intersect1.getY(), intersect2.getX(), intersect2.getY());
+        return 0;
+    }
+    else{
+        // Intersections points are not on the same edge. Now we have to check if the line between the invisible points intersects the canvas
+        // printf("Calling Function from TwoNotVisible again\n");
+        Point2d intersect3 = calculateEdgePointWithPoint1NotVisible(points[(indexVisible+1)%3].getX(), points[(indexVisible+1)%3].getY(), points[(indexVisible+2)%3].getX(), points[(indexVisible+2)%3].getY());
+        // printf("Finished\n");
+        // printf("Intersectionpoint of invisible points: (%d, %d)\n", intersect3.getX(), intersect3.getY());
+        if(intersect3.getX() != -1 && intersect3.getY() != -1){
+            // printf("Case two points not visible, four intersection points, which are not on the same edge\n");
+            // Case line intersects canvas
+            // printf("Calling Function from TwoNotVisible again\n");
+            Point2d intersect4 = calculateEdgePointWithPoint1NotVisible(points[(indexVisible+2)%3].getX(), points[(indexVisible+2)%3].getY(), intersect3.getX(), intersect3.getY());
+            // printf("Finished\n");
+            drawPoints[1] = intersect1;
+            drawPoints[2] = intersect3;
+            drawPoints[3] = intersect4;
+            drawPoints[4] = intersect2;
+
+            drawPhongPolygonOfTriangle(drawPoints, 5, originalTrianglePoints, colours, col);
+            // myWindow->drawPolygon(col, 5, drawPoints);
+            // printf("Drawn two not visible with points: (%d, %d), (%d, %d), (%d, %d)--------------------\n", points[0].getX(), points[0].getY(), points[1].getX(), points[1].getY(), points[2].getX(), points[2].getY());
+            return 0;
+        }
+        else{
+            // This would also work if points are on the same canvas edge
+            Point2d corners[4];
+            corners[0] = Point2d(windowWidth, 0);
+            corners[1] = Point2d(windowWidth, windowHeight);
+            corners[2] = Point2d(0, windowHeight);
+            corners[3] = Point2d(0, 0);
+            // printf("Corners: (%d, %d), (%d, %d), (%d, %d), (%d, %d)\n", corners[0].x, corners[0].y, corners[1].x, corners[1].y, corners[2].x, corners[2].y, corners[3].x, corners[3].y);
+
+            short startIndex;
+            if(intersect1.getY() == 0) startIndex = 0;
+            else if(intersect1.getX() == windowWidth) startIndex = 1;
+            else if(intersect1.getY() == windowHeight) startIndex = 2;
+            else startIndex = 3;
+            short endIndex;
+            if(intersect2.getY() == 0) endIndex = 0;
+            else if(intersect2.getX() == windowWidth) endIndex = 1;
+            else if(intersect2.getY() == windowHeight) endIndex = 2;
+            else endIndex = 3;
+
+            drawPoints[1] = intersect1;
+
+            int drawPointsIndex = 2;
+            for(int i = startIndex; i != endIndex; i=((i+1)%4)){
+                drawPoints[drawPointsIndex++] = corners[i];
+            }
+            drawPoints[drawPointsIndex++] = intersect2;
+            
+            drawPhongPolygonOfTriangle(drawPoints, drawPointsIndex, originalTrianglePoints, colours, col);
+            // myWindow->drawPolygon(col, drawPointsIndex, drawPoints);
+        }
+        // printf("Drawn two not visible with points: (%s), (%s), (%s)--------------------\n", points[0].toString(), points[1].toString(), points[2].toString());
+        return 0;
+    }
+}
+
+int Renderer::drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible, Point2d *originalTrianglePoints, unsigned int *colours){
+    // printf("Drawing one not visible with points: (%s), (%s), (%s)\n", points[0].toString(), points[1].toString(), points[2].toString());
+    int windowWidth = myWindow->getWindowWidth();
+    int windowHeight = myWindow->getWindowHeight();
+    Point2d drawPoints[5];
+    drawPoints[0] = points[(indexNotVisible+1)%3];
+    drawPoints[1] = points[(indexNotVisible+2)%3];
+    // First we find the points which intersect
+    // printf("Calling Function from OneNotVisible\n");
+    Point2d intersect1 = calculateEdgePointWithPoint1NotVisible(points[indexNotVisible].getX(), points[indexNotVisible].getY(), points[(indexNotVisible+1)%3].getX(), points[(indexNotVisible+1)%3].getY());
+    // printf("Finished\n");
+    // printf("Calling Function from OneNotVisible\n");
+    Point2d intersect2 = calculateEdgePointWithPoint1NotVisible(points[indexNotVisible].getX(), points[indexNotVisible].getY(), points[(indexNotVisible+2)%3].getX(), points[(indexNotVisible+2)%3].getY());
+    // printf("Finished\n");
+    // printf("One Point not visible intersection points: (%d, %d), (%d, %d)\n", intersect1.x, intersect1.y, intersect2.x, intersect2.y);
+    if(intersect1.getX() == intersect2.getX() || intersect1.getY() == intersect2.getY()){
+        // printf("Case one point not visible, two intersection points, which are on the same edge\n");
+        // This means the intersection points are on the same edge
+        drawPoints[2] = intersect2;
+        drawPoints[3] = intersect1;
+        // printf("Drawing polygon: (%d, %d), (%d, %d), (%d, %d), (%d, %d)\n", drawPoints[0].x, drawPoints[0].x, drawPoints[1].x, drawPoints[1].y, drawPoints[2].x, drawPoints[2].y, drawPoints[3].x, drawPoints[3].y);
+        drawPhongPolygonOfTriangle(drawPoints, 4, originalTrianglePoints, colours, col);
+        // myWindow->drawPolygon(col, 4, drawPoints);
+        // printf("Drawn one not visible with points: (%d, %d), (%d, %d), (%d, %d)--------------------\n", points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
+        return 0;
+    }
+    else if(intersect1.getX() == 0 || intersect1.getX() == windowWidth){
+        drawPoints[2] = intersect2;
+        Point2d corner(intersect1.getX(), intersect2.getY());
+        drawPoints[3] = corner;
+        drawPoints[4] = intersect1;
+        // printf("Case one point not visible, two intersection points, which are not on the same edge, corner %d, %d included\n", corner.x, corner.y);
+        // printf("Intersect points: (%d, %d), (%d, %d)\n", intersect1.x, intersect1.y, intersect2.x, intersect2.y);
+    }
+    else{
+        if(intersect1.getX() == -1 || intersect2.getX() == -1){
+            printf("Having problems trying to draw: (%d, %d), (%d, %d), (%d, %d). Index not visible: %d\nIntersections: (%d, %d), (%d, %d)\n---------------------------\n", 
+            points[0].getX(), points[0].getY(), points[1].getX(), points[1].getY(), points[2].getX(), points[2].getY(), indexNotVisible, intersect1.getX(), intersect1.getY(), intersect2.getX(), intersect2.getY());
+        }
+        drawPoints[2] = intersect2;
+        Point2d corner(intersect2.getX(), intersect1.getY());
+        drawPoints[3] = corner;
+        drawPoints[4] = intersect1;
+        // printf("Case one point not visible, two intersection points, which are not on the same edge, corner %d, %d included\n", corner.x, corner.y);
+    }
+    // printf("Drawing polygon: (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)\n", drawPoints[0].x, drawPoints[0].x, drawPoints[1].x, drawPoints[1].y, drawPoints[2].x, drawPoints[2].y, drawPoints[3].x, drawPoints[3].y, drawPoints[4].x, drawPoints[4].y);
+    drawPhongPolygonOfTriangle(drawPoints, 5, originalTrianglePoints, colours, col);
+    // myWindow->drawPolygon(col, 5, drawPoints);
+    // printf("Drawn one not visible with points: (%s), (%s), (%s)--------------------\n", points[0].toString(), points[1].toString(), points[2].toString());
+    return 0;
+}
 
 void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawObject*> *objectsToAddOnScreen, std::vector<DrawObject*> *dotsToAddOnScreen){
     int windowWidth = myWindow->getWindowWidth();
@@ -728,8 +821,8 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     }
     else{
         // ----------------- Distance calculation is numerically unstable, especially for referenceObject == object -----------------
-        x = (windowWidth/2) + std::floor(distanceNewBasis.getX() / distanceNewBasis.getZ() * (windowWidth/2));
-        y = (windowHeight/2) + std::floor(distanceNewBasis.getY() / distanceNewBasis.getZ() * (windowWidth/2));
+        x = (windowWidth/2) + std::floor((windowWidth/2) * distanceNewBasis.getX() / distanceNewBasis.getZ());
+        y = (windowHeight/2) + std::floor((windowWidth/2) * distanceNewBasis.getY() / distanceNewBasis.getZ());
     }
 
     // If no part of the object would be on screen, we dont draw it - only applicable for circle drawn stellar objects
@@ -757,7 +850,13 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     int backgroundGreen = (BACKGROUND_COL >> 8) & (0b11111111);
     int backgroundBlue = BACKGROUND_COL & (0b11111111);
     // if(object->getType()==STAR) printf("Before - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, red, green, blue, size);
+    
+    // This determines from when on an object gets rendered as a close objects and not a flat circle anymore - or as a plus respectively
+    int circleCutOff = 3;
+    int plusCutOff = 1;
     if(object->getType() == GALACTIC_CORE || object->getType() == STAR){
+        // Objects that shine by themselves fade away differentely
+
         if(size < 1.0/1000000){
             isPoint = true;
             // colour = ((int)(red*(1 + std::log(1000*size/2+0.5))) << 16) + ((int)(green*(1 + std::log(1000*size/2+0.5))) << 8) + (int)(blue*(1 + std::log(1000*size/2+0.5)));
@@ -766,38 +865,82 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
             + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(1000000*size/2+0.0001)/log(100000))));
             // if(object->getType()==STAR) printf("After - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, (int)(red*(1 + std::log(1000*size/2+0.5))), (int)(green*(1 + std::log(1000*size/2+0.5))), (int)(blue*(1 + std::log(1000*size/2+0.5))), size);
         }
-        else if(size < 1){
+        else if(size < plusCutOff){
             colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(size/2+0.5)))) << 16)
             + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(size/2+0.5)))) << 8)
             + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(size/2+0.5))));
             // if(object->getType()==STAR) printf("After - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, (int)(red*(1 + std::log(size/2+0.5)))<<16, (int)(green*(1 + std::log(size/2+0.5)))<<8, (int)(blue*(1 + std::log(size/2+0.5))), size);
+            originalColour = ((int)(backgroundRed + (std::max(0, red-backgroundRed))) << 16)
+            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen))) << 8)
+            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)));
+        }
+        else{
+            // Else the colour is the same as initialised
         }
     }
     else{
         if(size < 1.0/10000){
+            // Object is to small to be displayed
             // printf("Exited calculateObjectPosition\n");
             return;
         }
         // DotProductNormalForm does not work as intended
         else if(size < 1.0/100){
+            // Object is displayed as point
             isPoint = true;
             colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(100*size/2+0.5))*dotProductNormalVector)) << 16)
             + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(100*size/2+0.5))*dotProductNormalVector)) << 8)
             + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(100*size/2+0.5))*dotProductNormalVector));
         }
-        else if(size < 1){
+        else if(size < plusCutOff){
+            // Object is displayed as plus. Colour is the colour of the plus itself, originalColour is the colour of the centre point
+            // The centre point should have the same colour as the singular point, at the distance where they change
             colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(size/2+0.5))*dotProductNormalVector)) << 16)
             + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(size/2+0.5))*dotProductNormalVector)) << 8)
             + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(size/2+0.5))*dotProductNormalVector));
-        }
-        else{
-            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*dotProductNormalVector)) << 16)
+
+            originalColour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*dotProductNormalVector)) << 16)
             + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*dotProductNormalVector)) << 8)
             + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
         }
-        originalColour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*dotProductNormalVector)) << 16)
-        + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*dotProductNormalVector)) << 8)
-        + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
+        else if(size < circleCutOff){
+            // Object is displayed as a circle
+            // We want the colour to be inbetween it's own colour and the suns colour
+            int sunColour = object->getHomeSystem()->getChildren()->at(0)->getColour();
+            int sunRed = sunColour >> 16;
+            int sunGreen = (sunColour >> 8) & (0b11111111);
+            int sunBlue = sunColour & (0b11111111);
+            sunRed = (std::max(0, sunRed-backgroundRed)*dotProductNormalVector);
+            sunGreen = (std::max(0, sunGreen-backgroundGreen)*dotProductNormalVector);
+            sunBlue = (std::max(0, sunBlue-backgroundBlue)*dotProductNormalVector);
+            
+            int ownColour = object->getColour();
+            int ownRed = ownColour >> 16;
+            int ownGreen = (ownColour >> 8) & (0b11111111);
+            int ownBlue = ownColour & (0b11111111);
+            ownRed = (std::max(0, ownRed-backgroundRed)*dotProductNormalVector);
+            ownGreen = (std::max(0, ownGreen-backgroundGreen)*dotProductNormalVector);
+            ownBlue = (std::max(0, ownBlue-backgroundBlue)*dotProductNormalVector);
+
+
+            // TODO 
+            // FIX
+            double factorOwnColour = (size - plusCutOff) / (circleCutOff - plusCutOff);
+            double factorSunColour = 1 - factorOwnColour;
+            red = ((int)(backgroundRed + factorOwnColour * ownRed + factorSunColour * sunRed)) << 16;
+            green = ((int)(backgroundGreen + factorOwnColour * ownGreen + factorSunColour * sunGreen)) << 8;
+            blue = backgroundBlue + factorOwnColour * ownBlue + factorSunColour * sunBlue;
+            // printf("FactorOwnColour: %f, FactorSunColour: %f\n", factorOwnColour, factorSunColour);
+            // printf("Own colour: %x, %x, %x. Sun colour: %x, %x, %x. Res colour: %x, %x, %x\n", ownRed, ownGreen, ownBlue, sunRed, sunGreen, sunBlue, red, green, blue);
+
+            colour = red + green + blue;
+        }
+        else{
+            // Object is displayed as a sphere. The colour is not used
+            // colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*dotProductNormalVector)) << 16)
+            // + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*dotProductNormalVector)) << 8)
+            // + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
+        }
     }
     // printf("Colour and size of %s: %d, %f\n", object->getName(), colour, size);
 
@@ -811,9 +954,8 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
             dotsToAddOnScreen->push_back(drawObject);
         }
         // printf("Exited calculateObjectPosition\n");
-        return;
     }
-    else if(size<1){
+    else if(size < plusCutOff){
         x--;y--;
         // drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), PLUS);
         // dotsToAddOnScreen->push_back(drawObject);
@@ -823,9 +965,13 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         objectsToAddOnScreen->push_back(drawObject);
         drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
         objectsToAddOnScreen->push_back(drawObject);
-        return;
     }
-    else if(size > 3){
+    else if(size < circleCutOff){
+        x--;y--;
+        drawObject = new DrawObject(colour, x, y, size, distanceNewBasis.getLength(), CIRCLE);
+        objectsToAddOnScreen->push_back(drawObject);
+    }
+    else{
         // Close objects are rendered seperately, to harness the full power of multithreading
         CloseObject *closeObject = new CloseObject();
         closeObject->object = object;
@@ -833,11 +979,7 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         closeObject->size = size;
         closeObjects.push_back(closeObject);
         // calculateCloseObject(object, distanceNewBasis, size, objectsToAddOnScreen);
-        return;
     }
-    x--;y--;
-    drawObject = new DrawObject(colour, x, y, size, distanceNewBasis.getLength(), CIRCLE);
-    objectsToAddOnScreen->push_back(drawObject);
 
     // Draw reference lines
     // if(referenceObject == object && size>3)
@@ -859,83 +1001,13 @@ void Renderer::calculateCloseObject(StellarObject *object, PositionVector distan
     // printf("Resolution: %d\n", resolution);
     // First initialise the 6 different faces of the planet
 
-    StellarObjectRenderFace *faces = object->getRenderFaces();
-    faces[0].updateRenderFace(X_AXIS, FORWARDS, resolution);
-    faces[1].updateRenderFace(X_AXIS, BACKWARDS, resolution);
-    faces[2].updateRenderFace(Y_AXIS, FORWARDS, resolution);
-    faces[3].updateRenderFace(Y_AXIS, BACKWARDS, resolution);
-    faces[4].updateRenderFace(Z_AXIS, FORWARDS, resolution);
-    faces[5].updateRenderFace(Z_AXIS, BACKWARDS, resolution);
-
-    // Then gather all the triangles from the faces
-    // clock_gettime(CLOCK_MONOTONIC, &prevTime);
-    std::vector<RenderTriangle*> triangles;
-    std::mutex trianglesLock;
+    
     PositionVector absoluteCameraPosition = cameraPosition + referenceObject->getPositionAtPointInTime();
-    if(rendererThreadCount>=6){
-        std::vector<std::thread> threads;
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces, X_AXIS, FORWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 1, X_AXIS, BACKWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 2, Y_AXIS, FORWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 3, Y_AXIS, BACKWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 4, Z_AXIS, FORWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 5, Z_AXIS, BACKWARDS, resolution));
-        for(int i=0;i<6;i++){
-            threads.at(i).join();
-        }
-        threads.clear();
-        for(int i=0;i<6;i++){
-            threads.push_back(std::thread(getRenderTrianglesMultiThread, &(faces[i]), &triangles, absoluteCameraPosition, &trianglesLock));
-        }
-        for(int i=0;i<6;i++){
-            threads.at(i).join();
-        }
-        threads.clear();
-    }
-    else if(rendererThreadCount>=3){
-        std::vector<std::thread> threads;
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces, X_AXIS, FORWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 1, X_AXIS, BACKWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 2, Y_AXIS, FORWARDS, resolution));
-        for(int i=0;i<3;i++){
-            threads.at(i).join();
-        }
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 3, Y_AXIS, BACKWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 4, Z_AXIS, FORWARDS, resolution));
-        threads.push_back(std::thread(updateRenderFaceMultiThread, faces + 5, Z_AXIS, BACKWARDS, resolution));
-        for(int i=3;i<6;i++){
-            threads.at(i).join();
-        }
-        threads.clear();
-        for(int i=0;i<3;i++){
-            threads.push_back(std::thread(getRenderTrianglesMultiThread, &(faces[i]), &triangles, absoluteCameraPosition, &trianglesLock));
-        }
-        for(int i=0;i<3;i++){
-            threads.at(i).join();
-        }
-        for(int i=3;i<6;i++){
-            threads.push_back(std::thread(getRenderTrianglesMultiThread, &(faces[i]), &triangles, absoluteCameraPosition, &trianglesLock));
-        }
-        for(int i=3;i<6;i++){
-            threads.at(i).join();
-        }
-        threads.clear();
-    }
-    else{
-        faces[0].updateRenderFace(X_AXIS, FORWARDS, resolution);
-        faces[1].updateRenderFace(X_AXIS, BACKWARDS, resolution);
-        faces[2].updateRenderFace(Y_AXIS, FORWARDS, resolution);
-        faces[3].updateRenderFace(Y_AXIS, BACKWARDS, resolution);
-        faces[4].updateRenderFace(Z_AXIS, FORWARDS, resolution);
-        faces[5].updateRenderFace(Z_AXIS, BACKWARDS, resolution);
-        for(int i=0;i<6;i++){
-            faces[i].getRenderTriangles(&triangles, absoluteCameraPosition);
-        }
-    }
-    // printf("\n");
-    // clock_gettime(CLOCK_MONOTONIC, &currTime);
-    // updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
-    // printf("Getting all triangles took %d mics with %d threads\n", updateTime, rendererThreadCount);
+
+    StellarObjectRenderFace *faces = object->getRenderFaces();
+    faces->updateRenderFaces(resolution);
+    std::vector<RenderTriangle*> triangles;
+    faces->getRenderTriangles(&triangles, absoluteCameraPosition, cameraDirection);
 
     // Initialise drawObject as group and store all triangles of the object in it. We sort it individualy
     DrawObject *drawObject = new DrawObject(distanceNewBasis.getLength(), GROUP);
@@ -1206,16 +1278,29 @@ void Renderer::moveCamera(short direction, short axis){
     // If object is in focus
     // ------------------------------------------------------------------------ TODO ------------------------------------------------------------------------
     if(direction == FORWARDS){
-        if(cameraPosition.getLength() / 1.5 >= centreObject->getRadius())
-            cameraPosition /= 1.5;
-        else if(cameraPosition.getLength() / 1.25 >= centreObject->getRadius())
+        if(cameraPosition.getLength() / 1.25 >= centreObject->getRadius()*1.4)
             cameraPosition /= 1.25;
-        else if(cameraPosition.getLength() / 1.1 >= centreObject->getRadius())
+        else if(cameraPosition.getLength() / 1.1 >= centreObject->getRadius()*1.3)
             cameraPosition /= 1.1;
+        else if(cameraPosition.getLength() / 1.01 >= centreObject->getRadius()*1.2)
+            cameraPosition /= 1.01;
+        else if(cameraPosition.getLength() / 1.001 >= centreObject->getRadius()*1.1)
+            cameraPosition /= 1.01;
         // printf("New cameraPosition: (%f, %f, %f), distance to centre: %fly\n", cameraPosition.getX(),cameraPosition.getY(), cameraPosition.getZ(), cameraPosition.getLength()/lightyear);
         return;
     }
-    cameraPosition *= 1.5;
+    else{
+        if(cameraPosition.getLength() >= centreObject->getRadius()*1.4)
+            cameraPosition *= 1.25;
+        else if(cameraPosition.getLength()>= centreObject->getRadius()*1.3)
+            cameraPosition *= 1.1;
+        else if(cameraPosition.getLength() >= centreObject->getRadius()*1.2)
+            cameraPosition *= 1.01;
+        else if(cameraPosition.getLength() >= centreObject->getRadius()*1.1)
+            cameraPosition *= 1.01;
+        else
+            cameraPosition *= 1.01;
+    }
     // printf("New cameraPosition: (%f, %f, %f), distance to centre: %fly\n", cameraPosition.getX(),cameraPosition.getY(), cameraPosition.getZ(), cameraPosition.getLength()/lightyear);
 }
 
@@ -1233,7 +1318,7 @@ void Renderer::resetCameraOrientation(){
 }
 
 bool Renderer::visibleOnScreen(int x, int y){
-    return myWindow->visibleOnScreen(x, y);
+    return (x >= 0 && x <= myWindow->getWindowWidth() && y >= 0 && y <= myWindow->getWindowHeight());
 }
 
 void Renderer::increaseCameraMoveAmount(){
@@ -1496,11 +1581,10 @@ void Renderer::handleEvents(bool &isRunning, bool &isPaused){
     myWindow->getPendingEvents(eventTypes, parameters, numberOfPendingEvents);
     if(eventTypes[0] == -1){
         // Something wrong happened: abort
+        printf("Something went wrong with eventtype\n");
         return;
     }
-    for(int i=0;i<numberOfPendingEvents;i++){
-        if(eventTypes[i] == Expose)
-        
+    for(int i=0;i<numberOfPendingEvents;i++){        
         switch(eventTypes[i]){
             case Expose: draw(); break;
             case KeyPress: 
@@ -1532,6 +1616,10 @@ void Renderer::handleEvents(bool &isRunning, bool &isPaused){
                     case KEY_5: centrePreviousStarSystem(); break;
                     case KEY_6: centreNextStarSystem(); break;
                     case KEY_F: toggleCentre(); break;
+
+                    // Test
+                    case KEY_9: test = 1-test;
+
                     // Speed changes
                     case KEY_PG_UP: increaseSimulationSpeed(); break;
                     case KEY_PG_DOWN: decreaseSimulationSpeed(); break;
@@ -1613,8 +1701,6 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
 
     for(int i=start;i<start+amount;i++){
         RenderTriangle* triangle = triangles->at(i);
-        // ----------------------------------------------------- TODO -----------------------------------------------------
-        // Check here if normal vector is pointing in the same distance as the camera, then ignore the triangle
 
         PositionVector distanceMidPoint = triangle->getMidPoint() + object->getPositionAtPointInTime() - absoluteCameraPosition;
         PositionVector distanceMidPointNewBasis = inverseTransformationMatrixCameraBasis * distanceMidPoint;
@@ -1624,10 +1710,61 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
         PositionVector distanceP2NewBasis = inverseTransformationMatrixCameraBasis * distanceP2;
         PositionVector distanceP3 = triangle->getPoint3() + object->getPositionAtPointInTime() - absoluteCameraPosition;
         PositionVector distanceP3NewBasis = inverseTransformationMatrixCameraBasis * distanceP3;
+
         
-        if(distanceMidPointNewBasis.getZ()<0) {
-            // printf("Found triangle with midpoint behind the camera\n");
-            // delete triangle;
+        // For debug normals of points
+        if(renderer->test){
+            PositionVector normal1Endpoint = distanceP1 + triangle->getPoint1Normal().normalise() * (object->getRadius()/10);
+            PositionVector normal2Endpoint = distanceP2 + triangle->getPoint2Normal().normalise() * (object->getRadius()/10);
+            PositionVector normal3Endpoint = distanceP3 + triangle->getPoint3Normal().normalise() * (object->getRadius()/10);
+            PositionVector normal1EndpointNewBasis = inverseTransformationMatrixCameraBasis * normal1Endpoint;
+            PositionVector normal2EndpointNewBasis = inverseTransformationMatrixCameraBasis * normal2Endpoint;
+            PositionVector normal3EndpointNewBasis = inverseTransformationMatrixCameraBasis * normal3Endpoint;
+            if(distanceP1NewBasis.getZ() > normal1EndpointNewBasis.getZ() && distanceP1NewBasis.getZ() >= 0){
+                int windowWidth = renderer->getWindowWidth();
+                int windowHeight = renderer->getWindowHeight();
+
+                int xP1 = (windowWidth/2) + std::floor(distanceP1NewBasis.getX() / std::abs(distanceP1NewBasis.getZ()) * (windowWidth/2));
+                int yP1 = (windowHeight/2) + std::floor(distanceP1NewBasis.getY() / std::abs(distanceP1NewBasis.getZ()) * (windowWidth/2));
+                int xP2 = (windowWidth/2) + std::floor(normal1EndpointNewBasis.getX() / std::abs(normal1EndpointNewBasis.getZ()) * (windowWidth/2));
+                int yP2 = (windowHeight/2) + std::floor(normal1EndpointNewBasis.getY() / std::abs(normal1EndpointNewBasis.getZ()) * (windowWidth/2));
+
+                drawObjectsToAdd.push_back(new DrawObject(0xFF0000, xP1, yP1, xP2, yP2, 1, LINE));
+                // printf("Adding a line from (%d, %d) to (%d, %d). Distance1: %s, normal1Endpoint: %s\n", xP1, yP1, xP2, yP2, distanceP1NewBasis.toString(), normal1EndpointNewBasis.toString());
+            }
+            if(distanceP2NewBasis.getZ() > normal2EndpointNewBasis.getZ() && distanceP2NewBasis.getZ() >= 0){
+                int windowWidth = renderer->getWindowWidth();
+                int windowHeight = renderer->getWindowHeight();
+
+                int xP1 = (windowWidth/2) + std::floor(distanceP2NewBasis.getX() / std::abs(distanceP2NewBasis.getZ()) * (windowWidth/2));
+                int yP1 = (windowHeight/2) + std::floor(distanceP2NewBasis.getY() / std::abs(distanceP2NewBasis.getZ()) * (windowWidth/2));
+                int xP2 = (windowWidth/2) + std::floor(normal2EndpointNewBasis.getX() / std::abs(normal2EndpointNewBasis.getZ()) * (windowWidth/2));
+                int yP2 = (windowHeight/2) + std::floor(normal2EndpointNewBasis.getY() / std::abs(normal2EndpointNewBasis.getZ()) * (windowWidth/2));
+
+                drawObjectsToAdd.push_back(new DrawObject(0xFF0000, xP1, yP1, xP2, yP2, 1, LINE));
+            }
+            if(distanceP3NewBasis.getZ() > normal3EndpointNewBasis.getZ() && distanceP3NewBasis.getZ() >= 0){
+                int windowWidth = renderer->getWindowWidth();
+                int windowHeight = renderer->getWindowHeight();
+
+                int xP1 = (windowWidth/2) + std::floor(distanceP3NewBasis.getX() / std::abs(distanceP3NewBasis.getZ()) * (windowWidth/2));
+                int yP1 = (windowHeight/2) + std::floor(distanceP3NewBasis.getY() / std::abs(distanceP3NewBasis.getZ()) * (windowWidth/2));
+                int xP2 = (windowWidth/2) + std::floor(normal3EndpointNewBasis.getX() / std::abs(normal3EndpointNewBasis.getZ()) * (windowWidth/2));
+                int yP2 = (windowHeight/2) + std::floor(normal3EndpointNewBasis.getY() / std::abs(normal3EndpointNewBasis.getZ()) * (windowWidth/2));
+
+                drawObjectsToAdd.push_back(new DrawObject(0xFF0000, xP1, yP1, xP2, yP2, 1, LINE));
+            }
+        }
+        
+        
+
+        // I do not think we can rule out every of this triangles. Thus we change from (if distance behind) to (if all points behind)
+        // if(distanceMidPointNewBasis.getZ()<0) {
+        //     // printf("Found triangle with midpoint behind the camera\n");
+        //     // delete triangle;
+        //     continue;
+        // }
+        if(distanceP1NewBasis.getZ()<0 && distanceP2NewBasis.getZ()<0 && distanceP3NewBasis.getZ()<0){
             continue;
         }
 
@@ -1658,24 +1795,71 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
         int xP3 = (windowWidth/2) + std::floor(distanceP3NewBasis.getX() / std::abs(distanceP3NewBasis.getZ()) * (windowWidth/2));
         int yP3 = (windowHeight/2) + std::floor(distanceP3NewBasis.getY() / std::abs(distanceP3NewBasis.getZ()) * (windowWidth/2));
 
+        // if(xP1 > 390 && xP1 < 410 && yP1 > 290 && yP1 < 310){
+        //     printf("Point 1 (%d, %d) has coordinates (%Lf, %Lf, %Lf) and normal (%Lf, %Lf, %Lf)\n", xP1, yP1, triangle->getPoint1().getX(), triangle->getPoint1().getY(), triangle->getPoint1().getZ(), triangle->getPoint1Normal().getX(), triangle->getPoint1Normal().getY(), triangle->getPoint1Normal().getZ());
+        // }
+        // if(xP2 > 390 && xP2 < 410 && yP2 > 290 && yP2 < 310){
+        //     printf("Point 2 (%d, %d) has coordinates (%Lf, %Lf, %Lf) and normal (%Lf, %Lf, %Lf)\n", xP2, yP2, triangle->getPoint2().getX(), triangle->getPoint2().getY(), triangle->getPoint2().getZ(), triangle->getPoint2Normal().getX(), triangle->getPoint2Normal().getY(), triangle->getPoint2Normal().getZ());
+        // }
+        // if(xP3 > 390 && xP3 < 410 && yP3 > 290 && yP3 < 310){
+        //     printf("Point 3 (%d, %d) has coordinates (%Lf, %Lf, %Lf) and normal (%Lf, %Lf, %Lf)\n", xP3, yP3, triangle->getPoint3().getX(), triangle->getPoint3().getY(), triangle->getPoint3().getZ(), triangle->getPoint3Normal().getX(), triangle->getPoint3Normal().getY(), triangle->getPoint3Normal().getZ());
+        // }
+
         int colour = object->getColour();
+        int colourP1 = colour;
+        int colourP2 = colour;
+        int colourP3 = colour;
         long double dotProductNormalVector = 1;
+        long double dotProductP1 = 1;
+        long double dotProductP2 = 1;
+        long double dotProductP3 = 1;
 
         if(object->getType() != GALACTIC_CORE && object->getType() != STAR){
-            colour = object->getHomeSystem()->getChildren()->at(0)->getColour();
+            // colour = object->getHomeSystem()->getChildren()->at(0)->getColour();
+            // colourP1 = colour;
+            // colourP2 = colour;
+            // colourP3 = colour;
+            // This is the dot product of the vector from sun to object and the normal vector
+            // AFter that the dot product of the vector from sun to object and the normal vector of the three points
             dotProductNormalVector = std::max(0.0L, (object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - (triangle->getMidPoint() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getNormalVector().normalise()));
-            
+            dotProductP1 = std::max(0.0L, (object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - (triangle->getPoint1() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getPoint1Normal().normalise()));
+            dotProductP2 = std::max(0.0L, (object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - (triangle->getPoint2() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getPoint2Normal().normalise()));
+            dotProductP3 = std::max(0.0L, (object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - (triangle->getPoint3() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getPoint3Normal().normalise()));
+
             // No go through children and parents, to check if something is in between the light source (currently just the first star) and the triangle
             if(object->getParent()->getType() != GALACTIC_CORE && object->getParent()->getType() != STAR){
                 if(((object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - object->getPositionAtPointInTime()).dotProduct(object->getParent()->getPositionAtPointInTime() - object->getPositionAtPointInTime())) > 0){
                     Plane parentPlane = Plane(object->getParent()->getPositionAtPointInTime(), object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime() - (triangle->getMidPoint() + object->getPositionAtPointInTime()));
                     PositionVector intersection = parentPlane.findIntersectionWithLine(object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime(), (triangle->getMidPoint() + object->getPositionAtPointInTime()));
-                    long double distanceIntersectionParent = (object->getParent()->getPositionAtPointInTime() - intersection).getLength(); 
+                    long double distanceIntersectionParent = (object->getParent()->getPositionAtPointInTime() - intersection).getLength();
                     if(distanceIntersectionParent <= 0.5 * object->getParent()->getRadius()){
                         dotProductNormalVector = 0;
+                        dotProductP1 = 0;
+                        dotProductP2 = 0;
+                        dotProductP3 = 0;
                     }
                     else if(distanceIntersectionParent <= object->getParent()->getRadius()){
-                        dotProductNormalVector *= ((distanceIntersectionParent/object->getParent()->getRadius()) - 0.5) * 2;
+                        // Here we compute this factor with the distance of the intersection to the midpoint to not have to do 3 more calculations that change little
+                        long double factorMidPoint = ((distanceIntersectionParent/object->getParent()->getRadius()) - 0.5) * 2;
+
+                        // This caused anomalies. We now calculate three different factors!
+                        // That wasn't it. This change did little!!
+                        // ---------------------------------------- TODO ---------------------------------------- 
+                        // Maybe remove this again
+                        PositionVector intersectionP1 = parentPlane.findIntersectionWithLine(object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime(), (triangle->getPoint1() + object->getPositionAtPointInTime()));
+                        PositionVector intersectionP2 = parentPlane.findIntersectionWithLine(object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime(), (triangle->getPoint2() + object->getPositionAtPointInTime()));
+                        PositionVector intersectionP3 = parentPlane.findIntersectionWithLine(object->getHomeSystem()->getChildren()->at(0)->getPositionAtPointInTime(), (triangle->getPoint3() + object->getPositionAtPointInTime()));
+                        long double distanceIntersectionP1Parent = (object->getParent()->getPositionAtPointInTime() - intersectionP1).getLength();
+                        long double distanceIntersectionP2Parent = (object->getParent()->getPositionAtPointInTime() - intersectionP2).getLength();
+                        long double distanceIntersectionP3Parent = (object->getParent()->getPositionAtPointInTime() - intersectionP3).getLength();
+                        long double factorP1 = ((distanceIntersectionP1Parent/object->getParent()->getRadius()) - 0.5) * 2;
+                        long double factorP2 = ((distanceIntersectionP2Parent/object->getParent()->getRadius()) - 0.5) * 2;
+                        long double factorP3 = ((distanceIntersectionP3Parent/object->getParent()->getRadius()) - 0.5) * 2;
+
+                        dotProductNormalVector *= factorMidPoint;
+                        dotProductP1 *= factorP1;
+                        dotProductP2 *= factorP2;
+                        dotProductP3 *= factorP3;
                     }
                 }
             }
@@ -1700,24 +1884,59 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
         }
         else{
             // We slightly alter colour if the normal vector of the triangles point into the wrong direction from
-            dotProductNormalVector = (std::max(0.0L, (absoluteCameraPosition - (triangle->getMidPoint() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getNormalVector().normalise())) + 1) /2;
+            dotProductNormalVector = (std::max(0.0L, (absoluteCameraPosition - (triangle->getMidPoint() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getNormalVector().normalise())) + 1) / 2;
+            dotProductP1 = (std::max(0.0L, (absoluteCameraPosition - (triangle->getPoint1() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getPoint1Normal().normalise())) + 1) / 2;
+            dotProductP2 = (std::max(0.0L, (absoluteCameraPosition - (triangle->getPoint2() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getPoint2Normal().normalise())) + 1) / 2;
+            dotProductP3 = (std::max(0.0L, (absoluteCameraPosition - (triangle->getPoint3() + object->getPositionAtPointInTime())).normalise().dotProduct(triangle->getPoint3Normal().normalise())) + 1) / 2;
+            // if((xP1 == 400 && yP1 == 300)){
+            //     printf("Point1 (400, 300) has dotProduct %Lf. Normal is: (%s)\n", dotProductP1, triangle->getPoint1Normal().toString());
+            // }
+            // if((xP2 == 400 && yP2 == 300)){
+            //     printf("Point2 (400, 300) has dotProduct %Lf. Normal is: (%s)\n", dotProductP2, triangle->getPoint2Normal().toString());
+            // }
+            // if((xP3 == 400 && yP3 == 300)){
+            //     printf("Point3 (400, 300) has dotProduct %Lf. Normal is: (%s)\n", dotProductP3, triangle->getPoint3Normal().toString());
+            // }
         }
             
-        int red = colour >> 16;
-        int green = (colour >> 8) & (0b11111111);
-        int blue = colour & (0b11111111);
-        // Make sure that the colour is at least the background colour
         int backgroundRed = BACKGROUND_COL >> 16;
         int backgroundGreen = (BACKGROUND_COL >> 8) & (0b11111111);
         int backgroundBlue = BACKGROUND_COL & (0b11111111);
-        // printf("Old colour: %d, rgb: %d, %d, %d. Background rgb: %d, %d, %d\n", colour, red, green, blue, backgroundRed, backgroundGreen, backgroundBlue);
+
+        int red = colour >> 16;
+        int green = (colour >> 8) & (0b11111111);
+        int blue = colour & (0b11111111);
+        int redP1 = colourP1 >> 16;
+        int greenP1 = (colourP1 >> 8) & (0b11111111);
+        int blueP1 = colourP1 & (0b11111111);
+        int redP2 = colourP2 >> 16;
+        int greenP2 = (colourP2 >> 8) & (0b11111111);
+        int blueP2 = colourP2 & (0b11111111);
+        int redP3 = colourP3 >> 16;
+        int greenP3 = (colourP3 >> 8) & (0b11111111);
+        int blueP3 = colourP3 & (0b11111111);
+        // Make sure that the colour is at least the background colour
         colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*dotProductNormalVector)) << 16)
         + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*dotProductNormalVector)) << 8)
         + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
-        // printf("New colour: %d, new rgb: %d, %d, %d, dotProductNormalVector: %Lf\n\n", red, green, blue, colour, dotProductNormalVector);
+
+        colourP1 = ((int)(backgroundRed + (std::max(0, redP1-backgroundRed)*dotProductP1)) << 16)
+        + ((int)(backgroundGreen + (std::max(0, greenP1-backgroundGreen)*dotProductP1)) << 8)
+        + (int)(backgroundBlue + (std::max(0, blueP1-backgroundBlue)*dotProductP1));
+
+        colourP2 = ((int)(backgroundRed + (std::max(0, redP2-backgroundRed)*dotProductP2)) << 16)
+        + ((int)(backgroundGreen + (std::max(0, greenP2-backgroundGreen)*dotProductP2)) << 8)
+        + (int)(backgroundBlue + (std::max(0, blueP2-backgroundBlue)*dotProductP2));
+
+        colourP3 = ((int)(backgroundRed + (std::max(0, redP3-backgroundRed)*dotProductP3)) << 16)
+        + ((int)(backgroundGreen + (std::max(0, greenP3-backgroundGreen)*dotProductP3)) << 8)
+        + (int)(backgroundBlue + (std::max(0, blueP3-backgroundBlue)*dotProductP3));
 
         // printf("Adding triangle (%d, %d), (%d, %d), (%d, %d)\n", xP1, yP1, xP2, yP2, xP3, yP3);
         drawObjectsToAdd.push_back(new DrawObject(colour, xP1, yP1, xP2, yP2, xP3, yP3, distanceMidPoint.getLength(), TRIANGLE));
+        drawObjectsToAdd.back()->colourP1 = colourP1;
+        drawObjectsToAdd.back()->colourP2 = colourP2;
+        drawObjectsToAdd.back()->colourP3 = colourP3;
         // printf("Added something to drawObjectsToAdd\n");
         // objectsToAddOnScreen->push_back(drawObject);
         // delete triangle;
@@ -1730,20 +1949,6 @@ void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject 
         drawObject->addDrawObject(drawObjectToAdd);
     }
     drawObjectLock->unlock();
-}
-
-void updateRenderFaceMultiThread(StellarObjectRenderFace *face, short axis, short direction, short resolution){
-    face->updateRenderFace(axis, direction, resolution);
-}
-
-void getRenderTrianglesMultiThread(StellarObjectRenderFace *face, std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition, std::mutex *trianglesLock){
-    std::vector<RenderTriangle*> trianglesToAdd;
-    face->getRenderTriangles(&trianglesToAdd, absoluteCameraPosition);
-    trianglesLock->lock();
-    for(RenderTriangle *renderTriangle: trianglesToAdd){
-        triangles->push_back(renderTriangle);
-    }
-    trianglesLock->unlock();
 }
 
 // Naive way to multithread while quicksorting: we just assume both sides are about half

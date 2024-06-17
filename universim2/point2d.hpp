@@ -18,6 +18,7 @@ public:
     int getY();
 
     const char *toString();
+    bool operator == (Point2d position);
 };
 
 #endif

@@ -3,18 +3,15 @@
 #include "stellarObjectRenderFace.hpp"
 #include "stellarObject.hpp"
 #include "constants.hpp"
+#include <map>
 
 StellarObjectRenderFace::StellarObjectRenderFace(){
     this->owner = nullptr;
-    axis = -1;
-    direction = 0;
     resolution = 0;
 }
 
 StellarObjectRenderFace::StellarObjectRenderFace(StellarObject *owner){
     this->owner = owner;
-    axis = -1;
-    direction = 0;
     resolution = 0;
 }
 
@@ -22,118 +19,176 @@ void StellarObjectRenderFace::initialise(StellarObject *owner){
     this->owner = owner;
 }
 
-void StellarObjectRenderFace::updateRenderFace(short axis, short direction, short resolution){
+void StellarObjectRenderFace::updateRenderFaces(short resolution){
     if(this->resolution == resolution) return;
+
+    // ------------------------------------------------------- TODO -------------------------------------------------------
+    // Multithread this bad boy
+
+    // Start new 
 
     // struct timespec prevTime;
 	// struct timespec currTime;
     // int updateTime;
     // clock_gettime(CLOCK_MONOTONIC, &prevTime);
 
-    this->axis = axis;
-    this->direction = direction;
     this->resolution = resolution;
 
-    points = new PositionVector[resolution*resolution];
+    PositionVector points[resolution*resolution];
 
-    // PositionVector pointTopLeft = owner->getPosition();
+    // This is where we store the normalised and rounded values for each
+    // Deprecated
+    PositionVector normalisations[resolution*resolution];
+
+    // Here we initialise the distance between the mid point of a face and the centre of the object,
+    // as well as the difference between each point on a face,
+    // We assume that resolution is off (this should be enforced by the caller)
+    // Thus we have a grid
+    double distanceMidPointOwner = (resolution-1) / 2;
+    double distanceBetweenTwoPoints = 1;
+
+    std::map<PositionVector, PositionVector> pointsDirection;
+
+
+
     PositionVector pointTopLeft;
-    double distanceMidPointOwner = std::sqrt(std::pow(owner->getRadius(), 2)/2);
-    double distanceBetweenTwoPoints = (2*distanceMidPointOwner)/(resolution-1);
-    // printf("%f, %f\n", distanceBetweenTwoPoints, distanceMidPointOwner);
+    PositionVector pointsArrayXDirection;
+    PositionVector pointsArrayYDirection;
 
-    switch(axis){
-        case X_AXIS:
-            pointTopLeft = PositionVector(direction * distanceMidPointOwner, direction * distanceMidPointOwner, direction * distanceMidPointOwner);
-            // printf("%s\n", PositionVector(direction * distanceMidPointOwner, -distanceMidPointOwner, -distanceMidPointOwner).toString());
-            for(int i=0;i<resolution;i++){
-                for(int j=0;j<resolution;j++){
-                    points[i*resolution + j] = pointTopLeft + PositionVector(0, i * -direction * distanceBetweenTwoPoints, j * -direction * distanceBetweenTwoPoints);
-                }
-            }
-            break;
-        case Y_AXIS:
-            pointTopLeft = PositionVector(direction * distanceMidPointOwner, direction * distanceMidPointOwner, direction * distanceMidPointOwner);
-            for(int i=0;i<resolution;i++){
-                for(int j=0;j<resolution;j++){
-                    points[i*resolution + j] = pointTopLeft + PositionVector(i * -direction * distanceBetweenTwoPoints, 0, j * -direction * distanceBetweenTwoPoints);
-                }
-            }
-            break;
-        case Z_AXIS:
-            pointTopLeft = PositionVector(direction * distanceMidPointOwner, direction * distanceMidPointOwner, direction * distanceMidPointOwner);
-            for(int i=0;i<resolution;i++){
-                for(int j=0;j<resolution;j++){
-                    points[i*resolution + j] = pointTopLeft + PositionVector(i * -direction * distanceBetweenTwoPoints, j * -direction * distanceBetweenTwoPoints, 0);
-                }
-            }
-            break;
-    }
-
-    // "Blow up" square, such that each points distance to the centre equals the radius
-    PositionVector distanceVector;
-    for(int i=0;i<resolution;i++){
-        for(int j=0;j<resolution;j++){
-            // distanceVector = points[i*resolution + j] - owner->getPosition();
-            // points[i*resolution + j] = owner->getPosition() + distanceVector.normalise() * owner->getRadius();
-            // printf("Noise: %f\n", owner->getSurfaceNoise()->noise(points[i*resolution + j].getX(), points[i*resolution + j].getY(), points[i*resolution + j].getZ()));
-            PositionVector normalisation = points[i*resolution + j].normalise();
-            float noise;
-            short type = owner->getType();
-            if(type == GALACTIC_CORE || type == STARSYSTEM || type == STAR){
-                noise = 1;
-            }
-            else{
-                noise = 1 + ((owner->getSurfaceNoise()->fractal(3, normalisation.getX() + owner->getRandomVector().getX(), normalisation.getY() + owner->getRandomVector().getY(), normalisation.getZ() + owner->getRandomVector().getZ()))) / 10 / (std::max(0.50L, owner->getRadius()/(terranRadius/10)))/3;
-            }
-            // if(i == j){
-            //     printf("%s i = %d - noise: %f\n", owner->getName(), i, noise);
-            // }
-            points[i*resolution + j] = points[i*resolution + j].normalise() * owner->getRadius() * noise;
-            // points[i*resolution + j] = pointTopLeft + PositionVector(i * distanceBetweenTwoPoints, j * distanceBetweenTwoPoints, 0);
-        }
-    }
-
-    // Then clean and fill the renderTriangles with relative positions to their owners position
     for(RenderTriangle *triangle: renderTriangles){
         delete triangle;
     }
     renderTriangles.clear();
 
-    for(int i=0;i<resolution-1;i++){
-        for(int j=0;j<resolution-1;j++){
-            // Top left triangle
-            renderTriangles.push_back(new RenderTriangle(points[i*resolution + j], points[(i+1)*resolution + j], points[(i)*resolution + (j+1)]));
-            // Bottom right triangle
-            renderTriangles.push_back(new RenderTriangle(points[(i+1)*resolution + j], points[(i+1)*resolution + (j+1)], points[i*resolution + (j+1)]));
+    PositionVector p1;
+    PositionVector p2;
+    PositionVector p3;
+    PositionVector p4;
+    PositionVector p5;
+    PositionVector p6;
+
+    // We go through all 6 sides("faces") of the square
+    for(int axis=0;axis<3;axis++){
+        for(int direction=-1;direction<=1;direction+=2){
+            // First we initialise the pointTopLeft and the directions that the array of the current side will have
+            switch(axis){
+                case X_AXIS:
+                    pointTopLeft = PositionVector(direction * distanceMidPointOwner, direction * distanceMidPointOwner, distanceMidPointOwner);
+                    pointsArrayXDirection = PositionVector(0, (-1 * direction), 0);
+                    pointsArrayYDirection = PositionVector(0, 0, -1);
+                    break;
+                case Y_AXIS:
+                    pointTopLeft = PositionVector((-1 * direction) * distanceMidPointOwner, direction * distanceMidPointOwner, distanceMidPointOwner);
+                    pointsArrayXDirection = PositionVector(direction, 0, 0);
+                    pointsArrayYDirection = PositionVector(0, 0, -1);
+                    break;
+                case Z_AXIS:
+                    pointTopLeft = PositionVector(direction * distanceMidPointOwner, distanceMidPointOwner, direction * distanceMidPointOwner);
+                    pointsArrayXDirection = PositionVector(-1 * direction, 0, 0);
+                    pointsArrayYDirection = PositionVector(0, -1, 0);
+                    break;
+            }
+
+            // "Blow up" square, such that each points distance to the centre equals the radius
+            // We add all the points to a map, which represents the direction of the particular point, that is calculated by averaging the neighbouring triangles
+            for(int i=0;i<resolution;i++){
+                for(int j=0;j<resolution;j++){
+                    // We calculated the normalised distance vector from the centre
+                    PositionVector xOffset = pointsArrayXDirection * i * distanceBetweenTwoPoints;
+                    PositionVector yOffset = pointsArrayYDirection * j * distanceBetweenTwoPoints;
+                    PositionVector normalisation = (pointTopLeft + (xOffset) + (yOffset)).normalise();
+
+                    float noise;
+                    short type = owner->getType();
+                    if(type == GALACTIC_CORE || type == STARSYSTEM || type == STAR){
+                        noise = 1;
+                    }
+                    else{
+                        noise = 1 + ((owner->getSurfaceNoise()->fractal(3, normalisation.getX() + owner->getRandomVector().getX(), normalisation.getY() + owner->getRandomVector().getY(), normalisation.getZ() + owner->getRandomVector().getZ()))) / 10 / (std::max(0.50L, owner->getRadius()/(terranRadius/10)))/3;
+                    }
+                    // if(i == j){
+                    //     printf("%s i = %d - noise: %f\n", owner->getName(), i, noise);
+                    // }
+                    PositionVector point = normalisation * owner->getRadius() * noise;
+
+                    points[i * resolution + j] = point;
+                    auto it = pointsDirection.find(point);
+                    if (it != pointsDirection.end()) {
+                        // printf("Point (%Lf, %Lf, %Lf) is already in map. Normalised coordinates are: (%.12Lf, %.12Lf, %.12Lf)\n", point.getX(), point.getY(), point.getZ(), normalisation.getX(), normalisation.getY(), normalisation.getZ());
+                    }
+                    else{
+                        pointsDirection.insert(std::make_pair(point, PositionVector()));
+                    }
+                }
+            }
+            // printf("---------------------\n");
+
+            // We first go through the whole grid, build the triangles and add up all the normals of bordering triangles for the verteces
+            for(int i=0;i<resolution-1;i++){
+                for(int j=0;j<resolution-1;j++){
+                    p1 = points[(i)*resolution + (j+1)];
+                    p2 = points[i*resolution + j];
+                    p4 = points[(i+1)*resolution + (j)];
+                    p5 = points[(i+1)*resolution + (j+1)];
+
+                    int indexP3;
+                    int indexP6;
+                    if((i+j)%2 == 1){
+                        // Top left triangle
+                        indexP3 = (i+1)*resolution + (j);
+                        // Bottom right triangle
+                        indexP6 = (i)*resolution + (j+1);
+                    }
+                    else{
+                        // Top right triangle
+                        indexP3 = (i+1)*resolution + (j+1);
+                        // Bottom left triangle
+                        indexP6 = (i)*resolution + j;
+                    }
+                    p3 = points[indexP3];
+                    p6 = points[indexP6];
+
+                    PositionVector normalVector;
+                    renderTriangles.push_back(new RenderTriangle(p1, p2, p3));
+                    normalVector = renderTriangles.back()->getNormalVector();
+                    pointsDirection[p1] += normalVector;
+                    pointsDirection[p2] += normalVector;
+                    pointsDirection[p3] += normalVector;
+
+                    renderTriangles.push_back(new RenderTriangle(p4, p5, p6));
+                    normalVector = renderTriangles.back()->getNormalVector();
+                    pointsDirection[p4] += normalVector;
+                    pointsDirection[p5] += normalVector;
+                    pointsDirection[p6] += normalVector;
+                }
+            }
         }
     }
-
-    
-    // If neccessary adjust the normal vectors. This has to be done, because of the ordering of the points in the triangles
-    if((axis==X_AXIS && direction == BACKWARDS) || (axis==Y_AXIS && direction == FORWARDS) || (axis==Z_AXIS && direction == BACKWARDS)){
-        for(RenderTriangle *renderTriangle: renderTriangles){
-            renderTriangle->switchDirectionOfNormalVector();
-        }
+    // After building all the triangles, we go through all of them and add the directions of each point to the triangles
+    for(RenderTriangle *renderTriangle: renderTriangles){        
+        renderTriangle->setPoint1Normal(pointsDirection[renderTriangle->getPoint1()]);
+        renderTriangle->setPoint2Normal(pointsDirection[renderTriangle->getPoint2()]);
+        renderTriangle->setPoint3Normal(pointsDirection[renderTriangle->getPoint3()]);
     }
-
     // clock_gettime(CLOCK_MONOTONIC, &currTime);
     // updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
     // printf("Updating renderFaces took %d mics\n", updateTime);
 }
-
-void StellarObjectRenderFace::getRenderTriangles(std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition){
+// ---------------------------------------------------------------------------------------------------------------------------------
+void StellarObjectRenderFace::getRenderTriangles(std::vector<RenderTriangle*> *triangles, PositionVector absoluteCameraPosition, PositionVector cameraDirection){
     // struct timespec prevTime;
 	// struct timespec currTime;
     // int updateTime;
     // clock_gettime(CLOCK_MONOTONIC, &prevTime);
     // int counter = 0;
     for(RenderTriangle *triangle: renderTriangles){
-        // If the normal vector of the triangle points in the same direction as the vector from the camera to the object center, 
+        // If the normal vector of the triangle points in the same direction as the vector from the camera to the object centre, ass well es to the triangle centre, 
         // the triangle does not have to be rendered, since it must be behind other triangles
-        PositionVector objectToCamera = owner->getPositionAtPointInTime() - absoluteCameraPosition;
+        // Sadly the calculations with the cameraDirection does not work. triangle->getNormalVector().normalise().dotProduct(cameraDirection)<0
+        PositionVector cameraToObject = owner->getPositionAtPointInTime() - absoluteCameraPosition;
+        PositionVector cameraToTriangle = triangle->getMidPoint() + owner->getPositionAtPointInTime() - absoluteCameraPosition;
 
-        if(triangle->getNormalVector().normalise().dotProduct(objectToCamera)<0){
+        if(triangle->getNormalVector().normalise().dotProduct(cameraToObject)<0 && triangle->getNormalVector().normalise().dotProduct(cameraToTriangle)<0 ){
             // printf("Dot product: %Lf\n", triangle->getNormalVector().normalise().dotProduct(cameraDirection));
             triangles->push_back(triangle);
             // counter++;

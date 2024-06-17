@@ -35,21 +35,20 @@ public:
     // SHOULD be called after a function finished drawing. It swaps currently displayed and newly drawn picture
     void endDrawing();
 
-    // Checks if visible and draw if it is
+    // Draw point
     int drawPoint(unsigned int col, int x, int y);
-    // Checks if visible and draw if it is
+    // Draws line
     int drawLine(unsigned int col, int x1, int y1, int x2, int y2);
-    // Checks if visible and draw if it is
+    // Draws rect
     int drawRect(unsigned int col, int x, int y, int width, int height);
-    // Checks if visible and draw if it is
+    // Draws circle
     int drawCircle(unsigned int col, int x, int y, int diam);
-    // Checks if visible and draw if it is
+    // Draws string
     int drawString(unsigned int col, int x, int y, const char *stringToBe);
-    // Checks if visible and draw if it is
+    // Draws triangle
     int drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
-
-    // Unconditionally draws polygon. Bool checks can be implemented to do some checks
-    int drawPolygon(unsigned int col, short count, Point2d *points, bool checks = false);
+    // Draws polygon
+    int drawPolygon(unsigned int col, short count, Point2d *points);
 
     // SHOULD be called after finishing execution. Cleans up object
     void closeWindow();
@@ -63,13 +62,6 @@ public:
 
     int getWindowWidth();
     int getWindowHeight();
-    Point2d calculateEdgePointWithNoneVisible(int x1, int y1, int x2, int y2);
-    Point2d calculateEdgePointWithOneVisible(int x1, int y1, int x2, int y2);
-    int drawTriangleOneNotVisible(unsigned int col, Point2d *points, short indexNotVisible);
-    int drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible);
-    int drawTriangleAllNotVisible(unsigned int col, Point2d *points);
-
-    bool visibleOnScreen(int x, int y);
 };
 
 #endif

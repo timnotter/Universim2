@@ -77,20 +77,20 @@ void DrawObject::draw(Renderer *renderer){
     Point2d points[4];
     switch(type){
             case CIRCLE:
-                renderer->getMyWindow()->drawCircle(colour, x1, y1, size*2);
+                renderer->drawCircle(colour, x1, y1, size*2);
                 break;
             case LINE:
-                renderer->getMyWindow()->drawLine(colour, x1, y1, x2, y2);
+                renderer->drawLine(colour, x1, y1, x2, y2);
                 break;
             case RECTANGLE:
-                renderer->getMyWindow()->drawRect(colour, x1, y1, x2-x1, y2-y1);
+                renderer->drawRect(colour, x1, y1, x2-x1, y2-y1);
                 break;
             case TRIANGLE:
                 // printf("Drawing triangle in drawObject (%d, %d), (%d, %d), (%d, %d)\n", x1, y1, x2, y2, x3, y3);
-                renderer->getMyWindow()->drawTriangle(colour, x1, y1, x2, y2, x3, y3);
+                renderer->drawTriangle(colour, colourP1, colourP2, colourP3, x1, y1, x2, y2, x3, y3);
                 break;
             case POINT:
-                renderer->getMyWindow()->drawPoint(colour, x1, y1);
+                renderer->drawPoint(colour, x1, y1);
                 break;
             case POLYGON:
                 // Draw Polygon: we only implement polygons with four corners
@@ -99,7 +99,7 @@ void DrawObject::draw(Renderer *renderer){
                 points[2] = Point2d(x3, y3);
                 points[3] = Point2d(x4, y4);
 
-                renderer->getMyWindow()->drawPolygon(colour, 4, points, true);
+                renderer->drawPolygon(colour, 4, points);
                 // printf("Not implemented draw for polygon\n");
                 break;
             case PLUS:

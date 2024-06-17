@@ -77,7 +77,7 @@ int main(int argc, char **argv){
         //     XNextEvent(myWindow.getDisplay(), myWindow.getEvent());
         //     myWindow.handleEvent(*(myWindow.getEvent()), isRunning, isPaused);
         // }
-		myWindow.handleEvents(isRunning, isPaused);
+		renderer.handleEvents(isRunning, isPaused);
 		// printf("Handled events\n");
 		// clock_gettime(CLOCK_MONOTONIC, &currTime);
 		// updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
@@ -318,14 +318,12 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
     ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180));
 	ADD_PLANET(new Planet("Earth", 1, 1, 1, 0.0167086, 0));
     ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
-    // ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180));
-    // ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
-    ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0, 0));
-    ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0, 0));
+    ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180));
+    ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
     ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
     ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180));
-	// readMoonFile("./files/MoonsOfJupiterAdjusted.csv", galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back());
 	// Read file of Jupiters moons
+	readMoonFile("./files/MoonsOfJupiterAdjusted.csv", galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back());
     ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180));
 	// Read file of Saturns moons
     ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180));
@@ -345,8 +343,8 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 0.01, 0, 0));
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 
-	// Add random stars - currently orbit is still fixed
-	int totalStarsystems = 10;
+	// Add random stars - currently orbit is still fixed. Is it though? -.-
+	int totalStarsystems = 100000;
 	int threadNumber;
 	int amount;
 	long double characteristicScaleLength = 13000 * lightyear;
@@ -374,6 +372,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
     }
 	// printf("Threads completed their task\n");
 
+	// We store every object in a single vector for improved access in certain functions
 	for(StellarObject *galacticCore: *galaxies){
         for(StellarObject *starSystem: *(galacticCore->getChildren())){
             for(StellarObject *star: *(starSystem->getChildren())){

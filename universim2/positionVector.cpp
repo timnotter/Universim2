@@ -29,15 +29,15 @@ PositionVector::PositionVector(PositionVector *parent){
     getLength();
 }
 
-long double PositionVector::getX(){
+long double PositionVector::getX() const{
     return x;
 }
 
-long double PositionVector::getY(){
+long double PositionVector::getY() const{
     return y;
 }
 
-long double PositionVector::getZ(){
+long double PositionVector::getZ() const{
     return z;
 }
 
@@ -140,11 +140,31 @@ void PositionVector::operator /= (long double multiplier){
     validLength = false;
 }
 
-bool PositionVector::operator == (PositionVector position){
+bool PositionVector::operator == (const PositionVector& position) const{
     return (x == position.getX() && y == position.getY() && z == position.getZ());
 }
 
-bool PositionVector::operator != (PositionVector position){
+bool PositionVector::operator < (const PositionVector& position) const{
+    long double pX = position.getX();
+    long double pY = position.getY();
+    return ((x < pX) || (x == pX && y < pY) || (x == pX && y == pY && z < position.getZ()));
+}
+
+bool PositionVector::operator > (const PositionVector& position) const{
+    long double pX = position.getX();
+    long double pY = position.getY();
+    return ((x > pX) || (x == pX && y > pY) || (x == pX && y == pY && z > position.getZ()));
+}
+
+bool PositionVector::operator <= (const PositionVector& position) const{
+    return ((*this) < position || (*this) == position);
+}
+
+bool PositionVector::operator >= (const PositionVector& position) const{
+    return ((*this) > position || (*this) == position);
+}
+
+bool PositionVector::operator != (const PositionVector& position) const{
     return !(x == position.getX() && y == position.getY() && z == position.getZ());
 }
 

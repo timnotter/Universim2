@@ -18,9 +18,9 @@ public:
     PositionVector();
     PositionVector(long double x, long double y, long double z);
     PositionVector(PositionVector *parent);
-    long double getX();
-    long double getY();
-    long double getZ();
+    long double getX() const;
+    long double getY() const;
+    long double getZ() const;
     long double getLength();
     void setX(long double x);
     void setY(long double y);
@@ -40,8 +40,12 @@ public:
     void operator -= (PositionVector position);
     void operator *= (long double multiplier);
     void operator /= (long double multiplier);
-    bool operator == (PositionVector position);
-    bool operator != (PositionVector position);
+    bool operator == (const PositionVector& position) const;
+    bool operator < (const PositionVector& position) const;
+    bool operator > (const PositionVector& position) const;
+    bool operator <= (const PositionVector& position) const;
+    bool operator >= (const PositionVector& position) const;
+    bool operator != (const PositionVector& position) const;
 
     // Functions for the computation of multipole expansion
     long double rQr(Matrix3d Q);
