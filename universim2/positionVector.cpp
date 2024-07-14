@@ -80,6 +80,10 @@ long double PositionVector::dotProduct(PositionVector vector){
     return (x*vector.getX() + y*vector.getY() + z*vector.getZ());
 }
 
+PositionVector PositionVector::piecewiseProduct(PositionVector vector){
+    return PositionVector(x*vector.getX(), y*vector.getY(), z*vector.getZ());
+}
+
 PositionVector PositionVector::normalise(){
     long double vectorLength = getLength();
     return PositionVector(x/vectorLength, y/vectorLength, z/vectorLength);

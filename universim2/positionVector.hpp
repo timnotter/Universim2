@@ -28,6 +28,7 @@ public:
     long double distance(PositionVector position);
     PositionVector crossProduct(PositionVector vector);
     long double dotProduct(PositionVector vector);
+    PositionVector piecewiseProduct(PositionVector vector);
     // Returns the normalised value of the vector, without changing the vector itself
     PositionVector normalise();
     PositionVector operator + (PositionVector position);

@@ -109,7 +109,10 @@ void StellarObjectRenderFace::updateRenderFaces(short resolution){
                     // if(i == j){
                     //     printf("%s i = %d - noise: %f\n", owner->getName(), i, noise);
                     // }
-                    PositionVector point = normalisation * owner->getRadius() * noise;
+
+                    // The position relative to the centre is calculated using the normalisaed value, the radius, 
+                    // generated noise (for surface features) and the form (form irregular shapes) 
+                    PositionVector point = (normalisation * owner->getRadius() * noise).piecewiseProduct(owner->getForm());
 
                     points[i * resolution + j] = point;
                     auto it = pointsDirection.find(point);

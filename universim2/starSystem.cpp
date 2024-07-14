@@ -17,21 +17,26 @@ StarSystem::StarSystem(std::function<long double(double)> densityFunction, int n
     loneStar = true;
     generateName();
     struct timespec currTime;
+
+    // We generate a number between 0 and 1 to determine mean distance, according to the delivered density function
     getTime(&currTime, 0);
     srand(currTime.tv_nsec);
-
-    // // We generate a number between 0 and 1 to determine mean distance, according to the delivered density function
-
     long double randomNumber = (long double)rand() / RAND_MAX;
     setMeanDistance(densityFunction(randomNumber));
 
 
 
     // Random number between 0 and 0.2 for inclination
-    randomNumber = (long double)rand() / RAND_MAX / 5;
+    // randomNumber = (long double)rand() / RAND_MAX / 5;
+    getTime(&currTime, 0);
+    srand(currTime.tv_nsec);
+    randomNumber = std::pow((long double)rand() / RAND_MAX, 15);
     setInclination(randomNumber);
     // Random number between 0 and 0.1 for eccentricity
+    getTime(&currTime, 0);
+    srand(currTime.tv_nsec);
     randomNumber = (long double)rand() / RAND_MAX / 10;
+    // randomNumber = std::sqrt(std::sqrt((long double)rand() / RAND_MAX));
     setEccentricity(randomNumber);
     while(numberOfStars-- > 0){
         // printf("Adding child to %s\n", getName());

@@ -16,6 +16,9 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
     this->meanDistance = meanDistance;
     this->eccentricity = eccentricity;
     this->inclination = inclination;
+    this->form = PositionVector(1, 1, 1);
+    // HomeSystem is initialised as a nullptr. It has to be set by the addChild of the future parent
+    this->homeSystem = nullptr;
     localAccelerationLifeTime = 0;
     // Initialised as -1, such that in the first iteration the localAccelerationLifeTime is smaller than the maxLifeTime
     localAccelerationMaxLifeTime = -1;
@@ -67,6 +70,12 @@ StellarObject::StellarObject(const char *name, int type, long double radius, lon
             this->radius *= 1;
             this->mass *= 1;
             this->meanDistance *= astronomicalUnit;
+            surfaceNoise = new SimplexNoise(2, 2, 2, 0.5);
+            break;
+        case ASTEROID:
+            this->radius *= 1;
+            this->mass *= 1;
+            this->meanDistance *= 1;
             surfaceNoise = new SimplexNoise(2, 2, 2, 0.5);
             break;
     }
@@ -204,7 +213,6 @@ void StellarObject::place(){
         // printf("Velocity of parent of %s is (%f, %f, %f)\n", getName(), parent->getVelocity().getX(), parent->getVelocity().getY(), parent->getVelocity().getZ());
         velocity += parent->getVelocity();
 
-        // -------------------------------------------------------------------------- TODO --------------------------------------------------------------------
         // Go through all children and place their center of mass, calculate the center of mass of children
         PositionVector tempCentreOfMass = PositionVector();
         PositionVector childrenMomentum = PositionVector();
@@ -353,9 +361,12 @@ void StellarObject::addChild(StellarObject *child){
     // printf("Adding %s to %s\n", child->getName(), getName());
     children.push_back(child);
     child->setParent(this);
+    // printf("Added %s to %s\n", child->getName(), getName());
 
-    // printf("Between ifs\n");
-    if(((type == STARSYSTEM) && children.size()>1) || ((type != GALACTIC_CORE) && (type != STARSYSTEM))) {
+    // If this is a second trabant added to a starsystem or an object added to a star, we unset loneStar (activate gravity calculations)
+
+    // if(((type == STARSYSTEM) && children.size()>1) || ((type != GALACTIC_CORE) && (type != STARSYSTEM))) {
+    if(((type == STARSYSTEM) && children.size()>1) || (type == STAR && children.size()>=1)) {
         // printf("Setting loneStar of %s to false\n", (static_cast<StellarObject*>(homeSystem))->getName());
         // printf("Set LoneStar = false for %s\n", homeSystem->getName());
         homeSystem->setLoneStar(false);
@@ -404,7 +415,15 @@ void StellarObject::setParent(StellarObject *parent){
     this->parent = parent;
     // printf("Homesystem of %s is %p\n", parent->getName(), parent->getHomeSystem());
     if(type != STARSYSTEM){
-        this->homeSystem = parent->getHomeSystem();
+        // We have to further check if the parents homeSystem has been set yet. If it hasn't, i.e. it's still nullptr, we skip this step
+        StellarObject* hS = parent->getHomeSystem();
+        if(hS != nullptr){
+            setHomeSystem(parent->getHomeSystem());
+        }
+        // else{
+        //     printf("Found nullptr in homeSystem of %s\n", parent->getName());
+        // }
+        // ATTENTION!!! We cannot static cast homeSystem to StellarObject*, since it could also be null at this time!!
         // printf("Homesystem of %s is now %s with pointer %p\n", getName(), (static_cast<StellarObject*>(homeSystem))->getName(), homeSystem);
     }
     // printf("Parent of %s is now %s\n", name, parent->getName());
@@ -444,7 +463,12 @@ void StellarObject::setColour(int colour){
 }
 
 void StellarObject::setHomeSystem(StarSystem *homeSystem){
+    // printf("Setting homesystem of %s to %s\n", getName(), homeSystem->getName());
+    // Here we have to loop over all children and set their homeSystem to this aswell
     this->homeSystem = homeSystem;
+    for(StellarObject* child: children){
+        child->setHomeSystem(homeSystem);
+    }
 }
 
 void StellarObject::setLocalAcceleration(PositionVector localAcceleration){
@@ -477,6 +501,10 @@ void StellarObject::setOldVelocity(PositionVector oldVelocity){
 
 void StellarObject::setOldPosition(PositionVector oldPosition){
     this->oldPosition = oldPosition;
+}
+
+void StellarObject::setForm(PositionVector form){
+    this->form = form;
 }
 
 long double StellarObject::getX(){
@@ -553,6 +581,8 @@ int StellarObject::getColour(){
 }
 
 StarSystem *StellarObject::getHomeSystem(){
+    // Attention!!! This could potentially be null
+    // printf("HomeSystem of %s is %p\n", getName(), homeSystem);
     return homeSystem;
 }
 
@@ -598,6 +628,10 @@ PositionVector StellarObject::getRandomVector(){
 
 long StellarObject::getLocalAccelerationMaxLifeTime(){
     return localAccelerationMaxLifeTime;
+}
+
+PositionVector StellarObject::getForm(){
+    return form;
 }
 
 void StellarObject::freeObject(){

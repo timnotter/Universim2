@@ -7,6 +7,7 @@
 #define PLANET 3
 #define MOON 4
 #define COMET 5
+#define ASTEROID 6
 
 #include <vector>
 #include <string>
@@ -78,6 +79,8 @@ private:
     SimplexNoise *surfaceNoise;
     // Random numbers for noise generation
     PositionVector randomVector;
+    // Stores the form, meaning the relative length of each axis of the body
+    PositionVector form;
 
 
 public:
@@ -115,6 +118,7 @@ public:
     void setOldStellarAcceleration(PositionVector oldStellarAcceleration);
     void setOldVelocity(PositionVector oldVelocity);
     void setOldPosition(PositionVector oldPosition);
+    void setForm(PositionVector form);
 
     // Getter
     long double getX();
@@ -147,6 +151,7 @@ public:
     SimplexNoise *getSurfaceNoise();
     PositionVector getRandomVector();
     long getLocalAccelerationMaxLifeTime();
+    PositionVector getForm();
     
     void freeObject();
     void updateCentreOfMass();

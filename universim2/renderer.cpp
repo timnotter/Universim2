@@ -10,6 +10,14 @@
 
 // TODO: For background, make array for every pixel and add up brightness?
 
+// TODO: For new moon shapes, improve collision detection of camera and code a random form generation for small moons and comets
+
+// TODO: Improve lighting: especially if direct sunlight is blocked by a generated "mountain"
+
+// TODO: Include multiple rings and improve the generation of them. MeanDistance is fixed for this time
+
+// TODO: Points of rings are always rendered as objectsOnScreen. Maybe revert this
+
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate){
     this->myWindow = myWindow;
     this->galaxies = galaxies;
@@ -784,15 +792,10 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     int windowWidth = myWindow->getWindowWidth();
     int windowHeight = myWindow->getWindowHeight();
     
+    
     // First we calculate the distancevector from camera to object
     // PositionVector distance = object->getPosition() - referenceObject->getPosition() - cameraPosition; // This would be convenient but is comparatively much to slow
     PositionVector distance = PositionVector(object->getPositionAtPointInTime().getX()-referenceObject->getPositionAtPointInTime().getX()-cameraPosition.getX(), object->getPositionAtPointInTime().getY()-referenceObject->getPositionAtPointInTime().getY()-cameraPosition.getY(), object->getPositionAtPointInTime().getZ()-referenceObject->getPositionAtPointInTime().getZ()-cameraPosition.getZ());
-
-    // We then make a basistransformation with the cameraDirection and cameraPlaneVectors
-    // PositionStandardBasis = TransformationMatrix * PositionNewBasis
-    // Because the basis is orthonormal, the inverse is just the transpose
-    // -> InverseTransformationMatrix * PositionStandardBasis = PositionNewBasis
-    PositionVector distanceNewBasis = inverseTransformationMatrixCameraBasis * distance;
 
     // Calculate size in pixels on screen
     long double size = object->getRadius() / distance.getLength() * (windowWidth/2);
@@ -801,6 +804,15 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         // printf("Exited calculateObjectPosition\n");
         return;
     }
+    // if(object->getType() != GALACTIC_CORE && object->getType() != STARSYSTEM && object->getType() != STAR){
+    //     printf("Rendering %s\n", object->getName());
+    // }
+
+    // We then make a basistransformation with the cameraDirection and cameraPlaneVectors
+    // PositionStandardBasis = TransformationMatrix * PositionNewBasis
+    // Because the basis is orthonormal, the inverse is just the transpose
+    // -> InverseTransformationMatrix * PositionStandardBasis = PositionNewBasis
+    PositionVector distanceNewBasis = inverseTransformationMatrixCameraBasis * distance;
 
     // If the z-coordinate is negative, it is definitely out of sight, namely behind the camera
     if(distanceNewBasis.getZ()<-object->getRadius()){
@@ -825,10 +837,18 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         y = (windowHeight/2) + std::floor((windowWidth/2) * distanceNewBasis.getY() / distanceNewBasis.getZ());
     }
 
-    // If no part of the object would be on screen, we dont draw it - only applicable for circle drawn stellar objects
-    if(size < 15 && (x - size > windowWidth || x + size < 0 || y - size > windowHeight || y + size < TOPBAR_HEIGHT)){
+    
+
+    // If no part of the object would be on screen, we dont draw it - only applicable for objects that are far away -> small
+    // Cutoff of 5 chosesn arbitrarily
+    if(size < 5 && (x - size > windowWidth || x + size < 0 || y - size > windowHeight || y + size < TOPBAR_HEIGHT)){
         return;
     }
+
+    // if(object->getType() != GALACTIC_CORE && object->getType() != STARSYSTEM && object->getType() != STAR){
+    //     printf("Displaying %s with size of %.13Lf\n", object->getName(), size);
+    // }
+
     // ------------------------------------------------- TODO -------------------------------------------------
     int colour = object->getColour();
     float dotProductNormalVector;
@@ -851,31 +871,31 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
     int backgroundBlue = BACKGROUND_COL & (0b11111111);
     // if(object->getType()==STAR) printf("Before - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, red, green, blue, size);
     
-    // This determines from when on an object gets rendered as a close objects and not a flat circle anymore - or as a plus respectively
-    int circleCutOff = 3;
+    // This determines from when on an object gets rendered as a close object, a plus or a 
     int plusCutOff = 1;
+    double dotCutOffShining = 1.0/1000000;
+    double dotCutOffNonShining = 1.0/100;
     if(object->getType() == GALACTIC_CORE || object->getType() == STAR){
         // Objects that shine by themselves fade away differentely
-
-        if(size < 1.0/1000000){
+        if(size < dotCutOffShining){
             isPoint = true;
             // colour = ((int)(red*(1 + std::log(1000*size/2+0.5))) << 16) + ((int)(green*(1 + std::log(1000*size/2+0.5))) << 8) + (int)(blue*(1 + std::log(1000*size/2+0.5)));
-            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(1000000*size/2+0.0001)/log(100000)))) << 16)
-            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(1000000*size/2+0.0001)/log(100000)))) << 8)
-            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(1000000*size/2+0.0001)/log(100000))));
+            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log((1/dotCutOffShining)*size/2+0.0001)/log((1/dotCutOffShining))))) << 16)
+            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log((1/dotCutOffShining)*size/2+0.0001)/log((1/dotCutOffShining))))) << 8)
+            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log((1/dotCutOffShining)*size/2+0.0001)/log((1/dotCutOffShining)))));
             // if(object->getType()==STAR) printf("After - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, (int)(red*(1 + std::log(1000*size/2+0.5))), (int)(green*(1 + std::log(1000*size/2+0.5))), (int)(blue*(1 + std::log(1000*size/2+0.5))), size);
         }
         else if(size < plusCutOff){
-            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(size/2+0.5)))) << 16)
-            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(size/2+0.5)))) << 8)
-            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(size/2+0.5))));
+            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(size/(2*plusCutOff)+0.5)))) << 16)
+            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(size/(2*plusCutOff)+0.5)))) << 8)
+            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(size/(2*plusCutOff)+0.5))));
             // if(object->getType()==STAR) printf("After - Colour: %d, r: %d, g: %d, b: %d, size: %f\n", colour, (int)(red*(1 + std::log(size/2+0.5)))<<16, (int)(green*(1 + std::log(size/2+0.5)))<<8, (int)(blue*(1 + std::log(size/2+0.5))), size);
             originalColour = ((int)(backgroundRed + (std::max(0, red-backgroundRed))) << 16)
             + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen))) << 8)
             + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)));
         }
         else{
-            // Else the colour is the same as initialised
+            // Object is displayed as a sphere. The colour is not used
         }
     }
     else{
@@ -885,27 +905,18 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
             return;
         }
         // DotProductNormalForm does not work as intended
-        else if(size < 1.0/100){
+        else if(size < dotCutOffNonShining){
             // Object is displayed as point
             isPoint = true;
-            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(100*size/2+0.5))*dotProductNormalVector)) << 16)
-            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(100*size/2+0.5))*dotProductNormalVector)) << 8)
-            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(100*size/2+0.5))*dotProductNormalVector));
+            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log((1/dotCutOffNonShining)*size/2+0.5))*dotProductNormalVector)) << 16)
+            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log((1/dotCutOffNonShining)*size/2+0.5))*dotProductNormalVector)) << 8)
+            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log((1/dotCutOffNonShining)*size/2+0.5))*dotProductNormalVector));
         }
         else if(size < plusCutOff){
-            // Object is displayed as plus. Colour is the colour of the plus itself, originalColour is the colour of the centre point
+            // Object is displayed as a plus. Colour is the colour of the plus itself, originalColour is the colour of the centre point
             // The centre point should have the same colour as the singular point, at the distance where they change
-            colour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*(1 + std::log(size/2+0.5))*dotProductNormalVector)) << 16)
-            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*(1 + std::log(size/2+0.5))*dotProductNormalVector)) << 8)
-            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*(1 + std::log(size/2+0.5))*dotProductNormalVector));
-
-            originalColour = ((int)(backgroundRed + (std::max(0, red-backgroundRed)*dotProductNormalVector)) << 16)
-            + ((int)(backgroundGreen + (std::max(0, green-backgroundGreen)*dotProductNormalVector)) << 8)
-            + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
-        }
-        else if(size < circleCutOff){
-            // Object is displayed as a circle
-            // We want the colour to be inbetween it's own colour and the suns colour
+            
+            // We want the originalColour (colour of the centre dot) to be inbetween it's own colour and the suns colour
             int sunColour = object->getHomeSystem()->getChildren()->at(0)->getColour();
             int sunRed = sunColour >> 16;
             int sunGreen = (sunColour >> 8) & (0b11111111);
@@ -922,10 +933,7 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
             ownGreen = (std::max(0, ownGreen-backgroundGreen)*dotProductNormalVector);
             ownBlue = (std::max(0, ownBlue-backgroundBlue)*dotProductNormalVector);
 
-
-            // TODO 
-            // FIX
-            double factorOwnColour = (size - plusCutOff) / (circleCutOff - plusCutOff);
+            double factorOwnColour = ((((size) / (plusCutOff))));
             double factorSunColour = 1 - factorOwnColour;
             red = ((int)(backgroundRed + factorOwnColour * ownRed + factorSunColour * sunRed)) << 16;
             green = ((int)(backgroundGreen + factorOwnColour * ownGreen + factorSunColour * sunGreen)) << 8;
@@ -933,7 +941,15 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
             // printf("FactorOwnColour: %f, FactorSunColour: %f\n", factorOwnColour, factorSunColour);
             // printf("Own colour: %x, %x, %x. Sun colour: %x, %x, %x. Res colour: %x, %x, %x\n", ownRed, ownGreen, ownBlue, sunRed, sunGreen, sunBlue, red, green, blue);
 
-            colour = red + green + blue;
+            originalColour = red + green + blue;
+
+            //We fade the outer colour from its own colour to background
+            colour = ((int)(backgroundRed + (std::max(0, ownRed-backgroundRed)*(1 + std::log(size/(2*plusCutOff)+0.5))*dotProductNormalVector)) << 16)
+            + ((int)(backgroundGreen + (std::max(0, ownGreen-backgroundGreen)*(1 + std::log(size/(2*plusCutOff)+0.5))*dotProductNormalVector)) << 8)
+            + (int)(backgroundBlue + (std::max(0, ownBlue-backgroundBlue)*(1 + std::log(size/(2*plusCutOff)+0.5))*dotProductNormalVector));
+
+
+            // printf("%s - Size: %Lf. OwnColour: %x. SunColour: %x. factorOwnColour: %f. factorSunColour: %f. Original colour: %x\n", object->getName(), size, ownColour, sunColour, factorOwnColour, factorSunColour, originalColour);
         }
         else{
             // Object is displayed as a sphere. The colour is not used
@@ -942,21 +958,35 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
             // + (int)(backgroundBlue + (std::max(0, blue-backgroundBlue)*dotProductNormalVector));
         }
     }
+
+    // if(object->getType() != GALACTIC_CORE && object->getType() != STARSYSTEM && object->getType() != STAR){
+    //     printf("Determined colour of %s\n", object->getName());
+    // }
+
     // printf("Colour and size of %s: %d, %f\n", object->getName(), colour, size);
 
 
     // For dots, lines and plus', we have to decrement the coordinates, else they don't coincide with the triangulation approach (idk why)
     DrawObject *drawObject;
     if(isPoint){
-        x--;y--;
+        // x--;y--;
         if(visibleOnScreen(x, y)) {
             drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), POINT);
+
+            // -------------------------------------------------- EXPERIMENTAL --------------------------------------------------
+            // We put asteroids to the normal objects, since they can be infront of planets
+            if(object->getType() == 6){
+                objectsToAddOnScreen->push_back(drawObject);
+                return;
+            }
+
             dotsToAddOnScreen->push_back(drawObject);
+
         }
         // printf("Exited calculateObjectPosition\n");
     }
     else if(size < plusCutOff){
-        x--;y--;
+        // x--;y--;
         // drawObject = new DrawObject(colour, x, y, distanceNewBasis.getLength(), PLUS);
         // dotsToAddOnScreen->push_back(drawObject);
         // drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
@@ -966,11 +996,11 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
         drawObject = new DrawObject(originalColour, x, y, distanceNewBasis.getLength()-1, POINT);
         objectsToAddOnScreen->push_back(drawObject);
     }
-    else if(size < circleCutOff){
-        x--;y--;
-        drawObject = new DrawObject(colour, x, y, size, distanceNewBasis.getLength(), CIRCLE);
-        objectsToAddOnScreen->push_back(drawObject);
-    }
+    // else if(size < circleCutOff){
+    //     x--;y--;
+    //     drawObject = new DrawObject(colour, x, y, size, distanceNewBasis.getLength(), CIRCLE);
+    //     objectsToAddOnScreen->push_back(drawObject);
+    // }
     else{
         // Close objects are rendered seperately, to harness the full power of multithreading
         CloseObject *closeObject = new CloseObject();
