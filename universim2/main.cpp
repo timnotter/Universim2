@@ -17,10 +17,48 @@
 #include "date.hpp"
 #include "tree.hpp"
 
+// #define TOTAL_STARSYSTEMS 100000
+#define TOTAL_STARSYSTEMS 1000000
+
 // #define DEBUG
 
 // ------------------------------------------------------------------- SUGGESTION -------------------------------------------------------------------
 // Maybe store store position of substellar objects in relation to their star system, such that we have smaller numbers
+
+// TODO: For background, make array for every pixel and add up brightness?
+
+// TODO: The placement of the stellarObjects is slightly inaccurate. We place an object with random orbital parameters and
+//       calculate the speed it needs to orbit its parent. After that we place all children and then just add the momentum
+//       of the children to the parents speed, such that the total momentum of the system is 0.
+//       This way, children orbit the parent itself, and not the centre of mass (CoM) of the system
+//       I think this is fundamentally flawed and not accurate
+//       Better way: first place and then after all children have been placed, calculate the velocities around the CoM
+//       However, this way our orbital parameters cannot be used, since they do not reflect the reality of orbit, since
+//       they assume orbit around a stationary parental object and not the CoM, which is at a different place
+//
+//       ---------------- INACCURACY ----------------
+//       We store the velocity of each object absolute and not relative to it's parent. While placing children we use
+//       the stored velocity of the parent, which gets adjusted after placement of all children. Thus we use a false velocity!!
+//
+//       ---------------- INACCURACY ----------------
+//       We use 2 different ways to adjust velocity with the momentum of children
+//       1: velocity += (childrenMomentum * -1 / mass);
+//       2: velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
+//       Check and unify!!
+//		 This has to be further investigated, but it is assumed that the first term suffices
+//
+//       ---------------- Unknown ----------------
+//		 We assume every object in a system orbits the same point: the centre of mass. I don't actually know if this is universaly applicable
+
+// TODO: For new moon/ssteroid shapes, improve collision detection of camera and code a random form generation for small moons and comets
+
+// TODO: Improve lighting: especially if direct sunlight is blocked by a generated "mountain"
+
+// TODO: Include multiple rings and improve the generation of them. MeanDistance is fixed for this time
+
+// TODO: Points of rings are always rendered as objectsOnScreen. Maybe revert this
+
+// TODO: Fading away of stars (maybe to some degree also other objects) is not correct
 
 #ifdef DEBUG
 int main(int argc, char **argv){
@@ -49,6 +87,7 @@ int main(int argc, char **argv){
 	std::mutex stellarUpdateIsReady;
 	const int optimalTimeDrawing = MICROSECONDS_PER_FRAME;									//In microseconds
 	int optimalTimeLocalUpdate = MICROSECONDS_PER_FRAME * 2;								//In microseconds - I don't know why it has this value
+	// printf("Initialised optimalTimeLocalUpdate to %d\n", optimalTimeLocalUpdate);
 	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
 	// printf("Initialised stuff\n");
 
@@ -59,12 +98,15 @@ int main(int argc, char **argv){
 	// printf("Waiting screen drawn\n");
 
 	initialiseStellarObjects(&galaxies, &allObjects, &currentlyUpdatingOrDrawingLock);
-	// printf("Initialised stellar objects\n");
+	printf("Initialised stellar objects\n");
 	renderer.initialiseReferenceObject();
+	printf("Initialised reference objects\n");
 
 	struct timespec prevTime;
 	struct timespec currTime;
 	int updateTime;
+
+	printf("Starting gravity calculations\n");
 	// Start gravity calculations
 	std::thread *localUpdater = new std::thread(localUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &allObjects, &isRunning, &isPaused, &date, &optimalTimeLocalUpdate, &renderer, &localUpdateIsReady, &stellarUpdateIsReady);
 	std::thread *stellarUpdater = new std::thread(stellarUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &isRunning, &renderer, &allObjects, &localUpdateIsReady, &stellarUpdateIsReady);
@@ -273,7 +315,6 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 	struct timespec currTime;
 	stellarUpdateIsReady->lock();
 	while(*isRunning){
-		// --------------------------------------------------------- TODO --------------------------------------------------------- Acceleration doesn't work -- prob fix it??
 		getTime(&prevTime, 0);
 		for(std::vector<StellarObject*> &galaxy: galaxiesToUpdate){
 			// printf("Updating galaxy\n");
@@ -344,7 +385,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 
 	// Add random stars - currently orbit is still fixed. Is it though? -.-
-	int totalStarsystems = 100000;
+	int totalStarsystems = TOTAL_STARSYSTEMS;
 	int threadNumber;
 	int amount;
 	long double characteristicScaleLength = 13000 * lightyear;
@@ -398,7 +439,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 
 	// printf("Distance of moon and earth: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
 	// printf("Distance of moon and CoM earthsystem: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getCentreOfMass() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
-	// printf("Placed all stellar objects\n");
+	printf("Placed all stellar objects\n");
 }
 void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock, std::function<long double(double)> densityFunction){
 	// globalGalaxies is called like that, because then we can use the name "galaxies" and don't have to change the define

@@ -8,16 +8,6 @@
 #include "point2d.hpp"
 #include "plane.hpp"
 
-// TODO: For background, make array for every pixel and add up brightness?
-
-// TODO: For new moon shapes, improve collision detection of camera and code a random form generation for small moons and comets
-
-// TODO: Improve lighting: especially if direct sunlight is blocked by a generated "mountain"
-
-// TODO: Include multiple rings and improve the generation of them. MeanDistance is fixed for this time
-
-// TODO: Points of rings are always rendered as objectsOnScreen. Maybe revert this
-
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate){
     this->myWindow = myWindow;
     this->galaxies = galaxies;
@@ -226,7 +216,7 @@ void Renderer::drawUI(){
 
 int Renderer::drawPoint(unsigned int col, int x, int y){
     if(col<0 || col>0xFFFFFF) {
-        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        printf("Tried to draw a point with invalid colour: %x\n", col);
         return -1;
     }
     if(x<0||x>myWindow->getWindowWidth()||y<0||y>myWindow->getWindowHeight())
@@ -237,7 +227,7 @@ int Renderer::drawPoint(unsigned int col, int x, int y){
 
 int Renderer::drawLine(unsigned int col, int x1, int y1, int x2, int y2){
     if(col<0 || col>0xFFFFFF) {
-        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        printf("Tried to draw a line with invalid colour: %x\n", col);
         return -1;
     }
 
@@ -274,7 +264,7 @@ int Renderer::drawLine(unsigned int col, int x1, int y1, int x2, int y2){
 
 int Renderer::drawRect(unsigned int col, int x, int y, int width, int height){
     if(col<0 || col>0xFFFFFF) {
-        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        printf("Tried to draw a rect with invalid colour: %x\n", col);
         return -1;
     }
     return myWindow->drawRect(col, x, y, width, height);
@@ -282,7 +272,7 @@ int Renderer::drawRect(unsigned int col, int x, int y, int width, int height){
 
 int Renderer::drawCircle(unsigned int col, int x, int y, int diam){
     if(col<0 || col>0xFFFFFF) {
-        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        printf("Tried to draw a circle with invalid colour: %x\n", col);
         return -1;
     }
     return myWindow->drawCircle(col, x, y, diam);
@@ -290,7 +280,7 @@ int Renderer::drawCircle(unsigned int col, int x, int y, int diam){
 
 int Renderer::drawString(unsigned int col, int x, int y, const char *stringToBe){
     if(col<0 || col>0xFFFFFF) {
-        printf("Tried to draw a triangle with invalid colour: %x\n", col);
+        printf("Tried to draw a string with invalid colour: %x\n", col);
         return -1;
     }
     return myWindow->drawString(col, x, y, stringToBe);
@@ -1353,30 +1343,34 @@ bool Renderer::visibleOnScreen(int x, int y){
 
 void Renderer::increaseCameraMoveAmount(){
     cameraMoveAmount *= 1.5;
-    // if(cameraMoveAmount < astronomicalUnit/2)
-    //     printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
-    // else if(cameraMoveAmount < lightyear/2)
-    //     printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
-    // else
-    //     printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
+    if(cameraMoveAmount < astronomicalUnit/2)
+        printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
+    else if(cameraMoveAmount < lightyear/2)
+        printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
+    else
+        printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
 }
 
 void Renderer::decreaseCameraMoveAmount(){
     cameraMoveAmount = std::max(cameraMoveAmount / 1.5, (long double) 1.0);
-    // if(cameraMoveAmount < astronomicalUnit/2)
-    //     printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
-    // else if(cameraMoveAmount < lightyear/2)
-    //     printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
-    // else
-    //     printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
+    if(cameraMoveAmount < astronomicalUnit/2)
+        printf("New cameraMoveAmount: %Lfm\n", cameraMoveAmount);
+    else if(cameraMoveAmount < lightyear/2)
+        printf("New cameraMoveAmount: %LfaU\n", cameraMoveAmount/astronomicalUnit);
+    else
+        printf("New cameraMoveAmount: %Lfly\n", cameraMoveAmount/lightyear);
 }
 
 void Renderer::increaseSimulationSpeed(){
+    // printf("Old optimalTimeLocalUpdate: %d\n", *optimalTimeLocalUpdate);
     *optimalTimeLocalUpdate /= 2;
+    // printf("New optimalTimeLocalUpdate: %d\n", *optimalTimeLocalUpdate);
 }
 
 void Renderer::decreaseSimulationSpeed(){
+    // printf("Old optimalTimeLocalUpdate: %d\n", *optimalTimeLocalUpdate);
     *optimalTimeLocalUpdate *= 2;
+    // printf("New optimalTimeLocalUpdate: %d\n", *optimalTimeLocalUpdate);
 }
 
 void Renderer::centreParent(){

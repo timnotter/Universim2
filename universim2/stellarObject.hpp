@@ -9,6 +9,8 @@
 #define COMET 5
 #define ASTEROID 6
 
+#define MULTITHREAD_PLACEMENT 0
+
 #include <vector>
 #include <string>
 #include "positionVector.hpp"
@@ -17,6 +19,9 @@
 
 class StarSystem;
 class Tree;
+
+// Functions for multithreading
+void placeChildrenMultiThread(std::vector<StellarObject*> *children, int start, int amount);
 
 class StellarObject{
 private:
@@ -99,6 +104,8 @@ public:
     void updateStellarAccelerationMaxLifeTime();
     void addChild(StellarObject *child);
     void calculateTotalMass();
+    // Do not use this function during placement of stellar objects
+    // We just set the position of the object in the end, meaning this function will mess up everything
     void calculateCentreOfMass();
 
     void setParent(StellarObject *parent);
@@ -156,6 +163,9 @@ public:
     void freeObject();
     void updateCentreOfMass();
     void updatePositionAtPointInTime();
+
+    // These are code snippets that are used at multiple locations
+    void startPlacementOfChildren(std::vector<StellarObject*> *children, int maxThreadCount);
 
     // Make object virtual, needed for dynamic casts into subclasses
     virtual ~StellarObject() = default;

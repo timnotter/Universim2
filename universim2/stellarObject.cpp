@@ -133,44 +133,60 @@ void StellarObject::place(){
         }
         // printf("Centre of mass initialised to: (%s)\n", centreOfMass.toString());
 
-        PositionVector tempCentreOfMass = PositionVector();
-        PositionVector childrenMomentum = PositionVector();
-        long double childrenTotalMass = 0;
         // printf("Trying to place children of %s\n", name);
-        for(StellarObject *child: children){
-            child->place();
-            // printf("%s - position: (%s), velocity: (%s)\n", child->getName(), child->getPosition().toString(), child->getVelocity().toString());
-            // child->calculateTotalMass();
-            long double childTotalMass = child->getTotalMass();
-            tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
-            childrenMomentum += (child->getVelocity()) * childTotalMass;
-            childrenTotalMass += childTotalMass;
-        }
-        if(childrenTotalMass!=0) tempCentreOfMass /= childrenTotalMass;
+
+        // We multithread children placement.
+        int maxThreadCount = 8;
+        startPlacementOfChildren(&children, maxThreadCount);
+        // Old way
         // calculateTotalMass();
-        // printf("Centre of mass of children of %s is (%s). ChildrenTotalMass: %Lf, Mass: %Lf\n", getName(), tempCentreOfMass.toString(), childrenTotalMass, mass);
-        position.setX((centreOfMass.getX() * totalMass - tempCentreOfMass.getX() * childrenTotalMass) / mass);
-        position.setY((centreOfMass.getY() * totalMass - tempCentreOfMass.getY() * childrenTotalMass) / mass);
-        position.setZ((centreOfMass.getZ() * totalMass - tempCentreOfMass.getZ() * childrenTotalMass) / mass);
-        // printf("%s - position: (%s), velocity: (%s)\n", getName(), getPosition().toString(), getVelocity().toString());
-        // printf("(%Lf - %Lf) / %Lf = %Lf\n", centreOfMass.getX() * totalMass, tempCentreOfMass.getX() * childrenTotalMass, mass, position.getX());
-        // printf("Position: (%s)\n", position.toString());
-        // printf("Calculated CoM: (%s)\n", ((position * mass + tempCentreOfMass * childrenTotalMass)/totalMass).toString());
-        // printf("CoM: (%s)\n", getUpdatedCentreOfMass().toString());
+        // for(StellarObject *child: children){
+        //     child->place();
+        //     // printf("%s - position: (%s), velocity: (%s)\n", child->getName(), child->getPosition().toString(), child->getVelocity().toString());
+        //     // child->calculateTotalMass();
+        //     long double childTotalMass = child->getTotalMass();
+        //     tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
+        //     childrenMomentum += (child->getVelocity()) * childTotalMass;
+        //     childrenTotalMass += childTotalMass;
+        // }
+        // if(childrenTotalMass!=0) tempCentreOfMass /= childrenTotalMass;
+        // calculateTotalMass();
+
         if(children.size()!=0){
+            // ------------------------------------- ATTENTIONS -------------------------------------
+            // Here we use a different way to adjust the velocity than down below. Check which one is correct
             PositionVector before = velocity;
+
+            PositionVector childrenMomentum = PositionVector();
+            PositionVector childrenCentreOfMass = PositionVector();
+            long double childrenTotalMass = totalMass - mass;
+            for(StellarObject *child: children){
+                long double childTotalMass = child->getTotalMass();
+                childrenMomentum += (child->getVelocity()-velocity) * childTotalMass;
+                childrenCentreOfMass += child->getCentreOfMass() * childTotalMass;
+            }
+            childrenCentreOfMass /= childrenTotalMass;
+
+            // printf("Centre of mass of children of %s is (%s). ChildrenTotalMass: %Lf, Mass: %Lf\n", getName(), tempCentreOfMass.toString(), childrenTotalMass, mass);
+            position.setX((centreOfMass.getX() * totalMass - childrenCentreOfMass.getX() * childrenTotalMass) / mass);
+            position.setY((centreOfMass.getY() * totalMass - childrenCentreOfMass.getY() * childrenTotalMass) / mass);
+            position.setZ((centreOfMass.getZ() * totalMass - childrenCentreOfMass.getZ() * childrenTotalMass) / mass);
+
             // velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
             // velocity += (childrenMomentum * -(1/mass));              // Changed to the following statement
-            velocity = (childrenMomentum * -1 / mass);
+            
+            // velocity = (childrenMomentum * -1 / mass);
+            velocity += (childrenMomentum * -1 / mass);
             // velocity += (children.at(0)->getVelocity() * children.at(0)->getTotalMass() * (-1))/mass;
             // printf("childrenMomentum * -(1/mass): (%s), adjustement: (%s)\n", (childrenMomentum * -(1/mass)).toString(), ((position / position.getLength()) * (G * totalMass / position.getLength())).toString());
             // printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
-        }
-        PositionVector localMomentum = velocity * mass;
-        printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + localMomentum).toString(), childrenMomentum.toString(), localMomentum.toString());
-        if((childrenMomentum + localMomentum) != PositionVector()){
-            printf("Total momentum is not 0, trying again. Momentum is: (%s)\n",(childrenMomentum + velocity * mass).toString());
-            goto tryAgain;
+        
+            PositionVector localMomentum = velocity * mass;
+            printf("TotalMomentum: (%s), childrenMomentum: (%s), localMomentum: (%s)\n", (childrenMomentum + localMomentum).toString(), childrenMomentum.toString(), localMomentum.toString());
+            if((childrenMomentum + localMomentum) != PositionVector()){
+                printf("Total momentum is not 0, trying again. Momentum is: (%s)\n",(childrenMomentum + velocity * mass).toString());
+                goto tryAgain;
+            }
         }
     }
     else{
@@ -188,17 +204,17 @@ void StellarObject::place(){
         // Calculating of true anomaly
         meanAnomaly = eccentricAnomaly - eccentricity * std::sin(eccentricAnomaly);
 
-        // Initialise position with position of parent
+        // Initialise centreOfMass with that of parent
         centreOfMass = parent->getCentreOfMass();
 
-        // Calculate position from values
+        // Calculate position from orbital paramteres and store it into centreOfMass
         long double factor = semiMajorAxis * (1 - std::pow(eccentricity, 2)) / (1 + eccentricity * std::cos(trueAnomaly));
         centreOfMass.setX(centreOfMass.getX() + factor * (std::cos(trueAnomaly + argumentOfPeriapsis) * std::cos(longitudeOfAscendingNode) - std::sin(trueAnomaly + argumentOfPeriapsis) * std::sin(longitudeOfAscendingNode) * std::cos(inclination)));
         centreOfMass.setY(centreOfMass.getY() + factor * (std::cos(trueAnomaly + argumentOfPeriapsis) * std::sin(longitudeOfAscendingNode) + std::sin(trueAnomaly + argumentOfPeriapsis) * std::cos(longitudeOfAscendingNode) * std::cos(inclination)));
         centreOfMass.setZ(centreOfMass.getZ() + factor * (std::sin(trueAnomaly + argumentOfPeriapsis) * std::sin(inclination)));
 
-        // -------------------------------------------------------------------------- TODO --------------------------------------------------------------------------
-        // Compute speed around centre of mass of system after children are placed
+        // Here we compute the theoretical speed the object has to have with these orbital parameters
+        // We adjust the speed after the children are placed, such that the object orbits the new centre of mass
 
         // Speed should then be: 
         // v = sqrt(mu / p) * [-sin(v + w) * cos(O) - cos(v + w) * sin(O) * cos(i), -sin(v + w) * sin(O) + cos(v + w) * cos(O) * cos(i), cos(v + w) * sin(i)]
@@ -211,44 +227,76 @@ void StellarObject::place(){
             velocity.setZ(std::sqrt(mu / p) * (std::cos(trueAnomaly + argumentOfPeriapsis) * std::sin(inclination)));
         }
         // printf("Velocity of parent of %s is (%f, %f, %f)\n", getName(), parent->getVelocity().getX(), parent->getVelocity().getY(), parent->getVelocity().getZ());
+        
+        // ----------------------------------------- ATTENTION -----------------------------------------
+        // We here get the velocity of the parent, but it is altered after all children are placed. This this is
+        // inaccurate
         velocity += parent->getVelocity();
 
-        // Go through all children and place their center of mass, calculate the center of mass of children
-        PositionVector tempCentreOfMass = PositionVector();
-        PositionVector childrenMomentum = PositionVector();
-        long double childrenTotalMass = 0;
-        // printf("Trying to place children of %s\n", name);
-        for(StellarObject *child: children){
-            child->place();
-            child->calculateTotalMass();
-            long double childTotalMass = child->getTotalMass();
-            // printf("Total mass of system %s is %f\n", child->getName(), child->getTotalMass());
-            calculateCentreOfMass();
-            tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
-            childrenMomentum += (child->getVelocity()-velocity) * childTotalMass;
-            childrenTotalMass += childTotalMass;
-        }
-        if(childrenTotalMass!=0)
-            tempCentreOfMass /= childrenTotalMass;
+        // We multithread children placement.
+        int maxThreadCount = 8;
+        startPlacementOfChildren(&children, maxThreadCount);
 
-        // Place object, such that centre of mass is at correct place
-        if(type == STARSYSTEM){
+        // Old way
+        // // Go through all children and place their center of mass, calculate the center of mass of children
+        // PositionVector tempCentreOfMass = PositionVector();
+        // PositionVector childrenMomentum = PositionVector();
+        // long double childrenTotalMass = 0;
+        // // printf("Trying to place children of %s\n", name);
+        // for(StellarObject *child: children){
+        //     child->place();
+        //     child->calculateTotalMass();
+        //     long double childTotalMass = child->getTotalMass();
+        //     // printf("Total mass of system %s is %f\n", child->getName(), child->getTotalMass());
+        //     calculateCentreOfMass();
+        //     tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
+        //     childrenMomentum += (child->getVelocity()-velocity) * childTotalMass;
+        //     childrenTotalMass += childTotalMass;
+        // }
+        // if(childrenTotalMass!=0)
+        //     tempCentreOfMass /= childrenTotalMass;
+
+        // Finally we can adjust the velocity, such that the body orbits around the centre of mass of the system - Not sure if this is in fact correct
+        // PositionVector before = velocity;
+        // We adjust the velocity such that total momentum of the system is 0
+        if(children.size()!=0 && type!=STARSYSTEM){
+            // We calculate the momentum of all children and their CoM 
+            PositionVector childrenMomentum = PositionVector();
+            PositionVector childrenCentreOfMass = PositionVector();
+            long double childrenTotalMass = totalMass - mass;
+            for(StellarObject *child: children){
+                long double childTotalMass = child->getTotalMass();
+                childrenMomentum += (child->getVelocity()-velocity) * childTotalMass;
+                childrenCentreOfMass += child->getCentreOfMass() * childTotalMass;
+            }
+            childrenCentreOfMass /= childrenTotalMass;
+
+            // We place the object such that the centre of mass stays where we placed it at the beginning 
+            position.setX((centreOfMass.getX() * totalMass - childrenCentreOfMass.getX() * childrenTotalMass) / mass);
+            position.setY((centreOfMass.getY() * totalMass - childrenCentreOfMass.getY() * childrenTotalMass) / mass);
+            position.setZ((centreOfMass.getZ() * totalMass - childrenCentreOfMass.getZ() * childrenTotalMass) / mass);
+
+            // if(getType() == PLANET){
+            //     printf("%s - CoM: (%Lf, %Lf, %Lf), CCoM: (%Lf, %Lf, %Lf), Pos: (%Lf, %Lf, %Lf)\n", getName(), centreOfMass.getX(), centreOfMass.getY(), centreOfMass.getZ(), childrenCentreOfMass.getX(), childrenCentreOfMass.getY(), childrenCentreOfMass.getZ(), position.getX(), position.getY(), position.getZ());
+            // }
+
+            // I don't know where the second term came from
+            // velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
+            velocity += (childrenMomentum * -(1/mass));
+            // printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
+        }
+        else{
+            // A starsystem or an object without children is always placed exactly where the CoM is
              position.setX(centreOfMass.getX());
              position.setY(centreOfMass.getY());
              position.setZ(centreOfMass.getZ());
         }
-        else{
-            position.setX((centreOfMass.getX() * totalMass - tempCentreOfMass.getX() * childrenTotalMass) / mass);
-            position.setY((centreOfMass.getY() * totalMass - tempCentreOfMass.getY() * childrenTotalMass) / mass);
-            position.setZ((centreOfMass.getZ() * totalMass - tempCentreOfMass.getZ() * childrenTotalMass) / mass);
-        }
 
-        // Finally we can adjust the velocity, such that the body orbits around the centre of mass of the system - Not sure if this is in fact correct
-        // PositionVector before = velocity;
-        if(children.size()!=0 && type!=STARSYSTEM){
-            velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
-            // printf("Adjusted velocity of %s by (%s)\n", getName(), (velocity-before).toString());
-        }
+        // if(getType() == PLANET){
+        //     printf("Placed %s at (%Lf, %Lf, %Lf) with velocity (%Lf, %Lf, %Lf)\n", getName(), position.getX(), position.getY(), position.getZ(), velocity.getX(), velocity.getY(), velocity.getZ());
+        // }
+
+        // These are values used by the force calculations
         setOldPosition(position);
         setOldVelocity(velocity);
         setFuturePosition(position);
@@ -376,7 +424,6 @@ void StellarObject::addChild(StellarObject *child){
 }
 
 void StellarObject::calculateTotalMass(){
-    // ------------------------------------------ Can be improved by using recursion correctly ------------------------------------------
     totalMass = 0;
     for(StellarObject *child: children){
         child->calculateTotalMass();
@@ -388,26 +435,25 @@ void StellarObject::calculateTotalMass(){
 }
 
 void StellarObject::calculateCentreOfMass(){
-    // ------------------------------------------------------------------------ TODO ------------------------------------------------------------------------ correct?
     // Calculate centre of mass of current system
     PositionVector tempCentreOfMass = PositionVector();
-    long double totalMass = 0;
+    long double tempTotalMass = 0;
     for(StellarObject *child: children){
-        child->calculateTotalMass();
-        long double childTotalMass = child->getTotalMass();
         child->calculateCentreOfMass();
+        long double childTotalMass = child->getTotalMass();
         tempCentreOfMass += child->getCentreOfMass() * childTotalMass;
-        totalMass += childTotalMass;
+        tempTotalMass += child->getTotalMass();
     }
     if(type != STARSYSTEM){
         tempCentreOfMass += position * mass;
-        totalMass += mass;
+        tempTotalMass += mass;
     }
-    tempCentreOfMass /= totalMass;
-
-    // --------------------------------------------------------------------------- DAFUQ ---------------------------------------------------------------------------
-    // This function does not do anything really
-    // centreOfMass = tempCentreOfMass;
+    else{
+        mass = totalMass;
+    }
+    totalMass = tempTotalMass;
+    tempCentreOfMass /= tempTotalMass;
+    centreOfMass = tempCentreOfMass;
 }
 
 void StellarObject::setParent(StellarObject *parent){
@@ -662,4 +708,70 @@ void StellarObject::updateCentreOfMass(){
 
 void StellarObject::updatePositionAtPointInTime(){
     positionAtPointInTime = position;
+}
+
+void StellarObject::startPlacementOfChildren(std::vector<StellarObject*> *children, int maxThreadCount){
+    // Multithreading this does not actually decrease the needed time, even for large amounts of children,
+    // For 1'000'000 stars with a minimum of 100 objects per thread, the time
+    // spent does neither decrease consistently nor considerably, which is quite curious
+
+
+    struct timespec prevTime;
+	struct timespec currTime;
+	clock_gettime(CLOCK_MONOTONIC, &prevTime);
+
+    // If we have only one thread available or equal or less than 100 children, we do it all in one thread
+    if(maxThreadCount == 1 || children->size() <= 100 || MULTITHREAD_PLACEMENT == 0){
+        for(StellarObject *child: (*children)){
+            child->place();
+        }
+        if(children->size() > 100){
+            clock_gettime(CLOCK_MONOTONIC, &currTime);
+            printf("Placing all children of %s with one thread took: %ld mics\n", getName(), ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
+        }
+        return;
+    }
+    int threadsUsed;
+    int amountOfChildren = children->size();
+    // We want at least 100 children per thread with a min of 1 and a max of maxThreadCount
+    threadsUsed = std::max(std::min(amountOfChildren / 100, maxThreadCount), 1);
+    int childrenPerThread = amountOfChildren/threadsUsed;
+
+    printf("%s uses %d threads for %ld children\n", getName(), threadsUsed, children->size());
+
+    std::vector<std::thread> threads;
+    for(int i=0;i<threadsUsed-1;i++){
+        // printf("Starting thread %d with %d children from parent %s\n", i, childrenPerThread, getName());
+        threads.push_back(std::thread(placeChildrenMultiThread, children, i*childrenPerThread, childrenPerThread));
+    }
+    // printf("Starting thread %d with %d children from parent %s\n", threadsUsed-1, amountOfChildren - ((threadsUsed-1)*childrenPerThread), getName());
+    threads.push_back(std::thread(placeChildrenMultiThread, children, (threadsUsed-1)*childrenPerThread, amountOfChildren - ((threadsUsed-1)*childrenPerThread)));
+    // printf("Started all threads\n");
+    
+    for(int i=threadsUsed-1;i>=0;i--){
+        threads.at(i).join();
+        // printf("Thread %d ended\n", i);
+    }
+    threads.clear();
+    clock_gettime(CLOCK_MONOTONIC, &currTime);
+    printf("Placing all children of %s with multiple threads took: %ld mics\n", getName(), ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
+}
+
+void placeChildrenMultiThread(std::vector<StellarObject*> *children, int start, int amount){
+    struct timespec prevTime;
+	struct timespec currTime;
+	clock_gettime(CLOCK_MONOTONIC, &prevTime);
+
+    std::thread::id this_id = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << this_id;
+    std::string thread_id_str = ss.str();
+
+    for(int i=start;i<start+amount;i++){
+        children->at(i)->place();
+    }
+    
+    clock_gettime(CLOCK_MONOTONIC, &currTime);
+    printf("Thread %s with %d children and start %d took: %ld mics\n", thread_id_str.c_str(), amount, start, ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
+
 }

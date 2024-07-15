@@ -8,7 +8,7 @@ Planet::Planet(const char *name, double radius, double mass, double meanDistance
     // Set random colour
     setColour(0x0000FF);
     if(rings == 1){
-        addRing(getRadius() * 3, 0, 100000);
+        // addRing(getRadius() * 3, 0, 100);
     }
 }
 
