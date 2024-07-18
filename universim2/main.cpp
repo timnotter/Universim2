@@ -18,7 +18,7 @@
 #include "tree.hpp"
 
 // #define TOTAL_STARSYSTEMS 100000
-#define TOTAL_STARSYSTEMS 1000000
+#define TOTAL_STARSYSTEMS 50000
 
 // #define DEBUG
 
@@ -27,20 +27,7 @@
 
 // TODO: For background, make array for every pixel and add up brightness?
 
-// TODO: The placement of the stellarObjects is slightly inaccurate. We place an object with random orbital parameters and
-//       calculate the speed it needs to orbit its parent. After that we place all children and then just add the momentum
-//       of the children to the parents speed, such that the total momentum of the system is 0.
-//       This way, children orbit the parent itself, and not the centre of mass (CoM) of the system
-//       I think this is fundamentally flawed and not accurate
-//       Better way: first place and then after all children have been placed, calculate the velocities around the CoM
-//       However, this way our orbital parameters cannot be used, since they do not reflect the reality of orbit, since
-//       they assume orbit around a stationary parental object and not the CoM, which is at a different place
-//
-//       ---------------- INACCURACY ----------------
-//       We store the velocity of each object absolute and not relative to it's parent. While placing children we use
-//       the stored velocity of the parent, which gets adjusted after placement of all children. Thus we use a false velocity!!
-//
-//       ---------------- INACCURACY ----------------
+// TODO: ---------------- INACCURACY ----------------
 //       We use 2 different ways to adjust velocity with the momentum of children
 //       1: velocity += (childrenMomentum * -1 / mass);
 //       2: velocity += (childrenMomentum * -(1/mass)) - ((position / position.getLength()) * (G * totalMass / position.getLength()));
@@ -60,21 +47,7 @@
 
 // TODO: Fading away of stars (maybe to some degree also other objects) is not correct
 
-#ifdef DEBUG
 int main(int argc, char **argv){
-	MyWindow myWindow;
-	std::vector<StellarObject*> galaxies = std::vector<StellarObject*>();
-	std::vector<StellarObject*> allObjects = std::vector<StellarObject*>();
-	Date date(1, 1, 2023);
-	std::mutex currentlyUpdatingOrDrawingLock;
-	int optimalTimeLocalUpdate = MICROSECONDS_PER_FRAME * 2;
-	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
-}
-#endif
-
-#ifndef DEBUG
-int main(int argc, char **argv){
-	// printf("Entered main function\n");
 	// Initialise base things
     MyWindow myWindow;
     bool isRunning = true;
@@ -87,52 +60,46 @@ int main(int argc, char **argv){
 	std::mutex stellarUpdateIsReady;
 	const int optimalTimeDrawing = MICROSECONDS_PER_FRAME;									//In microseconds
 	int optimalTimeLocalUpdate = MICROSECONDS_PER_FRAME * 2;								//In microseconds - I don't know why it has this value
-	// printf("Initialised optimalTimeLocalUpdate to %d\n", optimalTimeLocalUpdate);
+
+	// Start the renderer
 	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
-	// printf("Initialised stuff\n");
 
 	// The window needs a little time to show up properly, don't know why
 	renderer.drawWaitingScreen();
 	std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	renderer.drawWaitingScreen();
-	// printf("Waiting screen drawn\n");
 
+	// Initialise all objects that ought to appear in the simulation
 	initialiseStellarObjects(&galaxies, &allObjects, &currentlyUpdatingOrDrawingLock);
-	printf("Initialised stellar objects\n");
 	renderer.initialiseReferenceObject();
-	printf("Initialised reference objects\n");
 
 	struct timespec prevTime;
 	struct timespec currTime;
 	int updateTime;
 
-	printf("Starting gravity calculations\n");
-	// Start gravity calculations
+	// Start gravity calculations concurrently
+	// Local updater calculates gravitation between objects within a solar system
+	// Stellar updater calculates gravitation between interstellar objects
 	std::thread *localUpdater = new std::thread(localUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &allObjects, &isRunning, &isPaused, &date, &optimalTimeLocalUpdate, &renderer, &localUpdateIsReady, &stellarUpdateIsReady);
 	std::thread *stellarUpdater = new std::thread(stellarUpdate, &currentlyUpdatingOrDrawingLock, &galaxies, &isRunning, &renderer, &allObjects, &localUpdateIsReady, &stellarUpdateIsReady);
+	
+	// Displaying and keyhandler loop
 	while(isRunning){
-		// printf("While isRunning\n");
 		// Handle events
 		getTime(&prevTime, 0);
-		// printf("Got time\n");
-		// while(XPending(myWindow.getDisplay())){
-        //     XNextEvent(myWindow.getDisplay(), myWindow.getEvent());
-        //     myWindow.handleEvent(*(myWindow.getEvent()), isRunning, isPaused);
-        // }
 		renderer.handleEvents(isRunning, isPaused);
-		// printf("Handled events\n");
 		// clock_gettime(CLOCK_MONOTONIC, &currTime);
 		// updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
-		// printf("Events took %d mics\n", updateTime);
+		// printf("Handling events took %d mics\n", updateTime);
 
-		// printf("Trying to draw\n");
+		// Drawing the screen
 		renderer.draw();
-		// printf("Drawn\n");
+		// After drawing the screen we calculate the time it took. If it was faster than the framrate permits,
+		// the thread goes to sleep for the remaining time. If it was was way to fast, we decrease the number of threads
+		// the renderer has available, if it was to slow, we increase it up to a maximum (set in teh renderer.hpp file as RENDERER_MAX_THREAD_COUNT)
 		getTime(&currTime, 0);
-		// printf("Got time again\n");
 		updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
-		// printf("Calculated update time: %dmics\n", updateTime);
-		// printf("Events and drawing took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, optimalTimeDrawing, (optimalTimeDrawing-updateTime));
+		// printf("Handling events and drawing took %d mics, compared to wanted %d mics. Now sleeping %d\n", updateTime, optimalTimeDrawing, (optimalTimeDrawing-updateTime));
         // clock_gettime(CLOCK_MONOTONIC, &prevTime);
 		int difference = optimalTimeDrawing-updateTime;
 		if(difference > 0) {
@@ -153,7 +120,7 @@ int main(int argc, char **argv){
 		// printf("Sleeptime: %dmics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
 	}
 
-	// Close/Free stuff
+	// Close/Free stuff after program exited the display loop
 	myWindow.closeWindow();
 	// Recursively free everything
 	for(StellarObject *galacticCore: galaxies){
@@ -163,8 +130,8 @@ int main(int argc, char **argv){
 
 	return 0;
 }
-#endif
 
+// Updates the positions and velocites of objects within solar systems
 void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, bool *isRunning, bool *isPaused, Date *date, int *optimalTimeLocalUpdate, Renderer *renderer, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady){
 	// Create vectors of all objects in the individual systems
 	std::vector<std::vector<StellarObject*>> starSystemsToUpdate;
@@ -296,6 +263,7 @@ void updateLoneStarStarsystemMultiThread(std::vector<StellarObject*> *loneStars,
 	}
 }
 
+// Updates positions and velocities of interstellar objects
 void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, bool *isRunning, Renderer *renderer, std::vector<StellarObject*> *allObjects, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady){
 	// Create vectors of all objects in the current galaxy					- Possibly add support for multiple galaxies with 
 	std::vector<std::vector<StellarObject*>> galaxiesToUpdate;

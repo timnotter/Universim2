@@ -386,9 +386,22 @@ int Renderer::drawPolygon(unsigned int col, short count, Point2d *points){
 int Renderer::drawPhongPolygonOfTriangle(Point2d *points, int count, Point2d *originalTrianglePoints, unsigned int *colours, unsigned int col){
     // printf("Drawing triangles with colours: (%x, %x, %x)\n", colours[0], colours[1], colours[2]);
 
-    // First we draw the whole polygon normally, to adjust for some holes that appear somehow. This has been fixed
-    // myWindow->drawPolygon(col, count, points);
-    // return 1;
+    if(count<=2){
+        printf("drawPhongPolygonOfTriangle: trying to draw polygon with only %d points\n", count);
+        return -1;
+    }
+
+    // First we go through all colours. If they are the same, we just draw the polygon with one colour instead of every pixel
+    unsigned int firstColour = *(colours);
+    for(int i=1;i<count;i++){
+        if(firstColour != *(colours+i)){
+            goto normal;
+        }
+    }
+    // printf("ALl colours of phong polygon are the same: %d\n", firstColour);
+    return myWindow->drawPolygon(firstColour, count, points);
+
+    normal:
 
     // We go through a box and check every point if it is inside our triangle.
     // We do this by calculating the barycentric coordinates. If all of them lie between 0 and 1, the point is inside.

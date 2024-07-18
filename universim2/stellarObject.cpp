@@ -228,9 +228,9 @@ void StellarObject::place(){
         }
         // printf("Velocity of parent of %s is (%f, %f, %f)\n", getName(), parent->getVelocity().getX(), parent->getVelocity().getY(), parent->getVelocity().getZ());
         
-        // ----------------------------------------- ATTENTION -----------------------------------------
-        // We here get the velocity of the parent, but it is altered after all children are placed. This this is
-        // inaccurate
+        // We add the velocity of the parent (which is at this stage effectively the velocity of the CoM, not of the parent itself)
+        // to the children. The parents velocity gets adjusted after placing it further below. This is to ensure that total momentum is 0
+        // This adjustement, however, has no impact on any children
         velocity += parent->getVelocity();
 
         // We multithread children placement.

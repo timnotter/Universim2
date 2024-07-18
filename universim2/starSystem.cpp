@@ -26,11 +26,15 @@ StarSystem::StarSystem(std::function<long double(double)> densityFunction, int n
 
 
 
-    // Random number between 0 and 0.2 for inclination
-    // randomNumber = (long double)rand() / RAND_MAX / 5;
+    // Random number between 0 and 1 to the power of 15, to make them smaller
     getTime(&currTime, 0);
     srand(currTime.tv_nsec);
     randomNumber = std::pow((long double)rand() / RAND_MAX, 15);
+    // We get another random number between 0 and 0.25, square and add it
+    // This is to ensure a little bit more variation in the galactic disc
+    getTime(&currTime, 0);
+    srand(currTime.tv_nsec);
+    randomNumber += std::pow((long double)rand() / RAND_MAX / 4, 2);
     setInclination(randomNumber);
     // Random number between 0 and 0.1 for eccentricity
     getTime(&currTime, 0);
