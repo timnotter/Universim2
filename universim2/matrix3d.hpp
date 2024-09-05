@@ -15,6 +15,7 @@ public:
     void setVector(PositionVector vector, short index);
     PositionVector getVector(short index);
     long double getEntry(short vector, short entry);
+    // Used to alter a single value
     void setEntry(short vector, short entry, long double value);
     PositionVector operator * (PositionVector vector);
     Matrix3d transpose();

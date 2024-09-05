@@ -86,9 +86,7 @@
 #define KEY_8 17
 #define KEY_9 18
 
-// I don't remember what this was for. Thus it is not deleted
-// static int debug = 0;
-
+// An object that is to close to be drawn as a simple circle gets assigned a CloseObject
 typedef struct CloseObject_s{
     StellarObject *object;
     PositionVector distanceNewBasis;
@@ -96,11 +94,16 @@ typedef struct CloseObject_s{
 } CloseObject;
 
 // Functions for multithreading
+// Starts threads to calculate new positions of all objects
 void calculateObjectPositionsMultiThread(int start, int amount, Renderer *renderer, int id);
+// Starts threads to update a snapshot of all positions. This is used before drawing the canvas
 void updatePositionAtPointInTimeMultiThread(std::vector<StellarObject*> *allObjects, int start, int amount);
+// Starts threads to calculate all objects rendered as CloseObjects
 void calculateCloseObjectTrianglesMultiThread(Renderer *renderer, StellarObject *object, std::vector<RenderTriangle*> *triangles, DrawObject *drawObject, int start, int amount, std::mutex *drawObjectLock);
 
+// Sorts a vector of DrawObject* by their distance to the camera
 void quicksort(int start, int end, std::vector<DrawObject*> *vector, int usedThreads, int maxThreads);
+// Quicksort helper function
 int quicksortInsert(int start, int end, std::vector<DrawObject*> *vector);
 
 class Renderer{
@@ -111,30 +114,30 @@ private:
     // Distance one button press moves the camera, when not centring on an object
     long double cameraMoveAmount = astronomicalUnit;
 
-    // Vector of stellar objects
+    // Vector of all galactic cores. Essentially acts as a tree structure via the children fields
     std::vector<StellarObject*> *galaxies;
+    // Vector with all objects
     std::vector<StellarObject*> *allObjects;
 
     // Camera position is always relativ to current reference object
     PositionVector cameraPosition;
+    PositionVector cameraDirection;
+    // CameraPlaneVectors are used for matrix transformations to the camera basis
     PositionVector cameraPlaneVector1;
     PositionVector cameraPlaneVector2;
-    PositionVector cameraDirection;
-    long double cameraPlaneEquationParameter4;
 
-    // When an object is centre, camera movements forward cannot "overshoot" object, 
-    // because the distance gets multiplied with factor and no flat addition is performed
+    // Camera is centred in on this object. Camera movement are made while keeping it in the centre
     StellarObject *centreObject;
-    StellarObject *lastCenterObject;        // Currently unused
-    // Variables for reference system, such that the camera keeps its position relative to this body
+    StellarObject *lastCenterObject;        // Currently unused. Can be used to cycle back to a previous centre
+    // Variables for reference system, such that the camera keeps its position relative to this body, even while the object moves through space
     StellarObject *referenceObject;
-    StellarObject *lastReferenceObject;     // Currently unused
+    StellarObject *lastReferenceObject;     // Currently unused. Can be used to cycle back to a previous reference object
 
     // Used to calculate display position of objects
     Matrix3d transformationMatrixCameraBasis;
     Matrix3d inverseTransformationMatrixCameraBasis;
 
-    // Vectors to store objects (any "normal" structures), dots (distant stars) and closeObjects (triangles of close opjects) 
+    // Vectors to store objects (any "normal" structures), dots (distant stars) and closeObjects (triangles of close objects) 
     // with their respective lock to allow multiple threads to add things
     std::vector<DrawObject*> objectsOnScreen;
     std::mutex objectsOnScreenLock;
@@ -142,23 +145,30 @@ private:
     std::mutex dotsOnScreenLock;
     std::vector<CloseObject*> closeObjects;
 
-    // Lock to protect the scene from changing while being drawn
+    // Lock to protect the scene from having different points in time in the same frame
     std::mutex *currentlyUpdatingOrDrawingLock;
 
+    // Pointer to the var, which is stored outside this class
     int *optimalTimeLocalUpdate;
 
+    // Determines how many threads the renderer currently is using
     int8_t rendererThreadCount;
 
 public:
+    // This can be toggled to display certain information
     bool test = 0;    
+    
     Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate);
 
     // Draws waiting screen
     void drawWaitingScreen();
     // Draws a snapshot of the current scene
     void draw();
+    // Calculates new positions of all objects
     void calculateObjectPosition(StellarObject *object, std::vector<DrawObject*> *objectsToAddOnScreen, std::vector<DrawObject*> *dotsToAddOnScreen);
+    // calculates all objects rendered as CloseObjects
     void calculateCloseObject(StellarObject *object, PositionVector distanceNewBasis, int size);
+    // Draws coloured lines on the axes of an object
     void calculateReferenceLinePositions(int x, int y, int size, StellarObject *object);
     // Blocks the updating procedure and stores current position of all objects by calling updatePositionAtPointInTimeMultiThread,
     // then unblocks updating procedure and calculates the positions of all objects on screen at the snapshottime by calling calculateObjectPositionsMultiThread
@@ -203,7 +213,7 @@ public:
     int drawTriangleTwoNotVisible(unsigned int col, Point2d *points, short indexVisible, Point2d *originalTrianglePoints, unsigned int *colours);
     // Assumes that the the points in the point array are convex and the next is always to the right of the previous
     int drawTriangleAllNotVisible(unsigned int col, Point2d *points, Point2d *originalTrianglePoints, unsigned int *colours);
-
+    // Checks if coordinates are on the canvas
     bool visibleOnScreen(int x, int y);
 
     // Sorts objectsOnScreen and then draws everything in the following order: dotsOnScreen, objectsOnScreen and then closeObjects
@@ -221,22 +231,28 @@ public:
     // Jumps to reference object, reset camera orientation to standard value and recalculates transformation matrices
     void resetCameraOrientation();
 
+    // Setting camera to centre the parent of current object
     void centreParent();
+    // Setting camera to centre the first child of current object
     void centreChild();
-    // Centring next child of parent
+    // Setting camera to centre next child of parent
     void centreNext();
+    // Setting camera to centre previous child of parent
     void centrePrevious();
+    // Setting camera to centre next starsystem in list
     void centreNextStarSystem();
+    // Setting camera to centre previous starsystem in list
     void centrePreviousStarSystem();
+    // Setting camera to centre the nearest object
     void centreNearest();
-    // Sets centre object to to reference object while not centring anything or enter "free roam mode" and unset centre object
+    // Sets centre object to the current reference object while not centring anything or enter "free roam mode" and unset centre object
     void toggleCentre();
 
     // Locks and adds single objects to objectsOnScreen vector
-    // AVOID due to performance
+    // AVOID using this repeatedly for multiple objects due to performance
     void addObjectOnScreen(DrawObject *drawObjects);
     // Locks and adds single objects to dotsOnScreen vector
-    // AVOID due to performance
+    // AVOID using this repeatedly for multiple objects due to performance
     void addDotOnScreen(DrawObject *drawObjects);
     // Locks and adds all objects to objectsOnScreen vector
     void addObjectsOnScreen(std::vector<DrawObject*> *drawObjects);

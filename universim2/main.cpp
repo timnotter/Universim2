@@ -87,7 +87,7 @@ int main(int argc, char **argv){
 	while(isRunning){
 		// Handle events
 		getTime(&prevTime, 0);
-		renderer.handleEvents(isRunning, isPaused);
+		renderer.handleEvents(isRunning, isPaused);				
 		// clock_gettime(CLOCK_MONOTONIC, &currTime);
 		// updateTime = ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000);
 		// printf("Handling events took %d mics\n", updateTime);
@@ -120,11 +120,8 @@ int main(int argc, char **argv){
 		// printf("Sleeptime: %dmics\n", ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
 	}
 
-	// Close/Free stuff after program exited the display loop
-	myWindow.closeWindow();
 	// Recursively free everything
 	for(StellarObject *galacticCore: galaxies){
-        galacticCore->freeObject();
         delete galacticCore;
     }
 
@@ -211,7 +208,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 
 		// Updating all lone stars is expensive (there are many) and not really significant, for their position changes are barely visible, even if close, since they have
 		// no close objects around them -> we only update them every LONESTAR_BACKOFF_AMOUNT normal update.
-		if(++loneStarUpdateCounter == LONESTAR_BACKOFF_AMOUNT){
+		if(loneStarUpdateCounter++ == LONESTAR_BACKOFF_AMOUNT){
 			loneStarUpdateCounter = 0;
 			getTime(&prevTime, 0);
 			int threadNumber = LOCAL_UPDATE_THREAD_COUNT;
@@ -229,8 +226,8 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			// printf("Updating loneStars took %d mics\n", updateTime);
 
 			for(StellarObject *galacticCore: *galaxies){
-				galacticCore->updateVelocity(TIMESTEP_LOCAL * 10);
-				galacticCore->updatePosition(TIMESTEP_LOCAL * 10);
+				galacticCore->updateVelocity(TIMESTEP_LOCAL * LONESTAR_BACKOFF_AMOUNT);
+				galacticCore->updatePosition(TIMESTEP_LOCAL * LONESTAR_BACKOFF_AMOUNT);
 			}
 		}
 		// Incrementing date

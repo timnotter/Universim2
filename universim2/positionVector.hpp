@@ -52,7 +52,7 @@ public:
     long double rQr(Matrix3d Q);
     PositionVector Qr(Matrix3d Q);
 
-    const char *toString();
+    const char *toString(int precision = 0);
     
 };
 

@@ -5,7 +5,6 @@
 #include "point2d.hpp"
 #ifdef _WIN32
 MyWindow::MyWindow(){}
-void MyWindow::closeWindow(){}
 void MyWindow::drawBackground(int colour){}
 void MyWindow::endDrawing(){}
 
@@ -56,7 +55,7 @@ MyWindow::MyWindow(){
     rootWindow = new Window;
 }
 
-void MyWindow::closeWindow(){
+MyWindow::~MyWindow(){
     XFreeGC((static_cast<Display *>(display)), *(static_cast<GC *>(gc)));
     XDestroyWindow((static_cast<Display *>(display)),*(static_cast<Window *>(window)));
     XCloseDisplay((static_cast<Display *>(display)));
@@ -70,7 +69,7 @@ void MyWindow::closeWindow(){
     // delete gc;
     // delete backBuffer;
     // delete rootWindow;
-    // delete display;                         
+    // delete display;
 }
 
 void MyWindow::drawBackground(int colour){

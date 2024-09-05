@@ -8,7 +8,7 @@
 
 class Renderer;
 class Point2d;
-                                                                    // TODO --------------- Changed all variable names to be clearer!!!! -------------------
+                                                                    // TODO --------------- Change all variable names to be clearer!!!! -------------------
 class MyWindow{
 private:
     // Used for X11 on Linux. They are all void*, such that we don't have to forward declare types. These void* can possibly reused by the windows graphics API (To be done)
@@ -30,6 +30,7 @@ private:
 public:
     // These functions are platform dependent
     MyWindow();
+    ~MyWindow();
     
     void drawBackground(int colour);
     // SHOULD be called after a function finished drawing. It swaps currently displayed and newly drawn picture
@@ -49,9 +50,6 @@ public:
     int drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3);
     // Draws polygon
     int drawPolygon(unsigned int col, short count, Point2d *points);
-
-    // SHOULD be called after finishing execution. Cleans up object
-    void closeWindow();
 
     int getNumberOfPendingEvents();
     // Takes as input two arraypointers and their size. Writes type of event into eventTypes array, and the keycodes into parameters array, if event was a keypress. 

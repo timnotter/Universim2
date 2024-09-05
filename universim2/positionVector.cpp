@@ -186,9 +186,11 @@ PositionVector PositionVector::Qr(Matrix3d Q){
     return QR;
 }
 
-const char *PositionVector::toString(){
+const char *PositionVector::toString(int precision){
     std::ostringstream outputStream;
-    // outputStream.precision(20);
+    if(precision != 0){
+        outputStream.precision(precision);
+    }
     outputStream << x << ", " << y << ", " << z;
     vectorString = outputStream.str();
 

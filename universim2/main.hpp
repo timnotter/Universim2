@@ -11,7 +11,7 @@
 #define ADD_MOON(a) galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back()->addChild(a)
 #define ADD_COMET(a) galaxies->back()->getChildren()->back()->getChildren()->back()->addChild(a)
 
-#define TIMESTEP_LOCAL 100 // Timestep per update iteration in seconds
+#define TIMESTEP_LOCAL 120 // Timestep per update iteration in seconds
 // #define TIMESTEP_LOCAL 60 // Timestep per update iteration in seconds
 // #define TIMESTEP_LOCAL 20 // Timestep per update iteration in seconds
 // #define TIMESTEP_LOCAL 1 // Timestep per update iteration in seconds
@@ -19,7 +19,7 @@
 // #define TIMESTEP_LOCAL 3600 * 24 * 365 * 100L
 #define TIMESTEP_STELLAR 3600 * 24 * 365 * 100L
 
-#define LONESTAR_BACKOFF_AMOUNT 100
+#define LONESTAR_BACKOFF_AMOUNT 720
 
 #define MICROSECONDS_PER_FRAME 1000000/20
 

@@ -819,11 +819,6 @@ void Renderer::calculateObjectPosition(StellarObject *object, std::vector<DrawOb
 
     // If the z-coordinate is negative, it is definitely out of sight, namely behind the camera
     if(distanceNewBasis.getZ()<-object->getRadius()){
-        // std::string *nameComparison = new std::string("Sagittarius A*");
-        // if(strcmp(object->getName(), nameComparison->c_str()) == 0){
-        //     printf("%s exited via z-coordinate constraint\n", object->getName());
-        // }
-        // delete nameComparison;
         return;
     }
 
