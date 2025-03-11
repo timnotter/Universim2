@@ -4,20 +4,192 @@
 #include "constants.hpp"
 #include "point2d.hpp"
 #ifdef _WIN32
-MyWindow::MyWindow(){}
-void MyWindow::drawBackground(int colour){}
-void MyWindow::endDrawing(){}
+// #include <Windows.h>
+// #include <gdiplus.h>
+using namespace Gdiplus;
 
-int MyWindow::drawPoint(unsigned int col, int x, int y){return 1;}
-int MyWindow::drawLine(unsigned int col, int x1, int y1, int x2, int y2){return 1;}
-int MyWindow::drawRect(unsigned int col, int x, int y, int width, int height){return 1;}
-int MyWindow::drawCircle(unsigned int col, int x, int y, int diam){return 1;}
-int MyWindow::drawString(unsigned int col, int x, int y, const char *stringToBe){return 1;}
-int MyWindow::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3){return 1;}
-int MyWindow::drawPolygon(unsigned int col, short count, Point2d *points, bool checks){return 1;}
-void MyWindow::getPendingEvents(int *eventTypes, u_int *parameters, int numberOfEvents){}
-bool MyWindow::visibleOnScreen(int x, int y){return false;}
+MyWindow::MyWindow() : windowWidth(SCREEN_WIDTH), windowHeight(SCREEN_HEIGHT), hdc(nullptr), hBitmap(nullptr), graphics(nullptr), hwnd(nullptr) {
+    GdiplusStartupInput gdiplusStartupInput;
+    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
 
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = GetModuleHandle(nullptr);
+    wc.lpszClassName = L"MyWindowClass";
+    RegisterClass(&wc);
+
+    hwnd = CreateWindowEx(0, L"MyWindowClass", L"My Window", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nullptr, nullptr, GetModuleHandle(nullptr), this);
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+
+    hdc = GetDC(hwnd);
+
+    hBitmap = CreateCompatibleBitmap(hdc, windowWidth, windowHeight);
+    memDC = CreateCompatibleDC(hdc);
+    SelectObject(memDC, hBitmap);
+
+    graphics = Graphics::FromHDC(memDC);
+    graphics->Clear(Color::Black);
+}
+
+MyWindow::~MyWindow() {
+    delete graphics;
+    DeleteDC(memDC);
+    DeleteObject(hBitmap);
+    ReleaseDC(hwnd, hdc);
+    DestroyWindow(hwnd);
+    GdiplusShutdown(gdiplusToken);
+}
+
+void MyWindow::drawBackground(int colour) {
+    graphics->Clear(Color(colour));
+}
+
+void MyWindow::endDrawing() {
+    BitBlt(hdc, 0, 0, windowWidth, windowHeight, memDC, 0, 0, SRCCOPY);
+}
+
+int MyWindow::drawPoint(unsigned int col, int x, int y) {
+    SolidBrush brush(Color(col));
+    graphics->FillRectangle(&brush, x, y, 1, 1);
+    return 0;
+}
+
+int MyWindow::drawLine(unsigned int col, int x1, int y1, int x2, int y2) {
+    Pen pen(Color(col));
+    graphics->DrawLine(&pen, x1, y1, x2, y2);
+    return 0;
+}
+
+int MyWindow::drawRect(unsigned int col, int x, int y, int width, int height) {
+    SolidBrush brush(Color(col));
+    graphics->FillRectangle(&brush, x, y, width, height);
+    return 0;
+}
+
+int MyWindow::drawCircle(unsigned int col, int x, int y, int diam) {
+    Pen pen(Color(col));
+    graphics->DrawEllipse(&pen, x - diam / 2, y - diam / 2, diam, diam);
+    SolidBrush brush(Color(col));
+    graphics->FillEllipse(&brush, x - diam / 2, y - diam / 2, diam, diam);
+    return 0;
+}
+
+int MyWindow::drawString(unsigned int col, int x, int y, const char* stringToBe) {
+    FontFamily fontFamily(L"Arial");
+    Font font(&fontFamily, 12, FontStyleRegular, UnitPixel);
+    SolidBrush brush(Color(col));
+    graphics->DrawString(std::wstring(stringToBe, stringToBe + strlen(stringToBe)).c_str(), -1, &font, PointF(static_cast<REAL>(x), static_cast<REAL>(y)), &brush);
+    return 0;
+}
+
+int MyWindow::drawTriangle(unsigned int col, int x1, int y1, int x2, int y2, int x3, int y3) {
+    Point points[] = { Point(x1, y1), Point(x2, y2), Point(x3, y3) };
+    SolidBrush brush(Color(col));
+    graphics->FillPolygon(&brush, points, 3);
+    return 0;
+}
+
+int MyWindow::drawPolygon(unsigned int col, short count, Point2d* points) {
+    std::vector<Point> gdiPoints(count);
+    for (int i = 0; i < count; ++i) {
+        gdiPoints[i] = Point(points[i].getX(), points[i].getY());
+    }
+    SolidBrush brush(Color(col));
+    graphics->FillPolygon(&brush, gdiPoints.data(), count);
+    return 0;
+}
+
+int MyWindow::getWindowWidth() {
+    return windowWidth;
+}
+
+int MyWindow::getWindowHeight() {
+    return windowHeight;
+}
+
+int MyWindow::getNumberOfPendingEvents() {
+    MSG msg;
+    return PeekMessage(&msg, hwnd, 0, 0, PM_NOREMOVE);
+}
+
+int MyWindow::translateWindowsEventType(int windowsEventType) {
+    switch (windowsEventType) {
+        case WM_PAINT: return Expose;
+        case WM_KEYDOWN: return KeyPress;
+        // Add translations for other Windows event types as needed
+        default: return windowsEventType; // Return the original event type if no translation is found
+    }
+}
+
+unsigned int MyWindow::translateWindowsKeycode(unsigned int windowsKeycode) {
+    switch (windowsKeycode) {
+        case VK_ESCAPE: return KEY_ESCAPE;
+        case VK_SPACE: return KEY_SPACE;
+        case VK_Q: return KEY_Q;
+        case VK_W: return KEY_W;
+        case VK_E: return KEY_E;
+        case VK_R: return KEY_R;
+        case VK_S: return KEY_S;
+        case VK_D: return KEY_D;
+        case VK_F: return KEY_F;
+        case VK_J: return KEY_J;
+        case VK_K: return KEY_K;
+        case VK_L: return KEY_L;
+        case VK_OEM_4: return KEY_OE;
+        case VK_OEM_6: return KEY_AE;
+        case VK_LEFT: return KEY_LEFT;
+        case VK_UP: return KEY_UP;
+        case VK_RIGHT: return KEY_RIGHT;
+        case VK_DOWN: return KEY_DOWN;
+        case VK_PRIOR: return KEY_PG_UP;
+        case VK_NEXT: return KEY_PG_DOWN;
+        case VK_1: return KEY_1;
+        case VK_2: return KEY_2;
+        case VK_3: return KEY_3;
+        case VK_4: return KEY_4;
+        case VK_5: return KEY_5;
+        case VK_6: return KEY_6;
+        case VK_9: return KEY_9;
+        default: return windowsKeycode; // If no translation, return the original keycode
+    }
+}
+
+void MyWindow::getPendingEvents(int* eventTypes, u_int* parameters, int numberOfEvents) {
+    MSG msg;
+    for (int i = 0; i < numberOfEvents; ++i) {
+        if (PeekMessage(&msg, hwnd, 0, 0, PM_NOREMOVE)) {
+            GetMessage(&msg, hwnd, 0, 0);
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+            eventTypes[i] = msg.message;
+            parameters[i] = msg.wParam;
+        } else {
+            eventTypes[i] = -1;
+            return;
+        }
+    }
+}
+
+LRESULT CALLBACK MyWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_NCCREATE) {
+        CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
+        MyWindow* window = reinterpret_cast<MyWindow*>(cs->lpCreateParams);
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(window));
+        return DefWindowProc(hwnd, message, wParam, lParam);
+    }
+    MyWindow* window = reinterpret_cast<MyWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    if (window) {
+        switch (message) {
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        default:
+            return DefWindowProc(hwnd, message, wParam, lParam);
+        }
+    }
+    return DefWindowProc(hwnd, message, wParam, lParam);
+}
 #endif
 
 // #ifdef __unix
@@ -146,17 +318,11 @@ int MyWindow::drawPolygon(unsigned int col, short count, Point2d *points){
     // }
     return 0;
 }
-#endif
 
-int MyWindow::getWindowWidth(){
-    return windowWidth;
-}
-int MyWindow::getWindowHeight(){
-    return windowHeight;
-}
 int MyWindow::getNumberOfPendingEvents(){
     return XEventsQueued((static_cast<Display *>(display)), QueuedAlready);
 }
+
 void MyWindow::getPendingEvents(int *eventTypes, u_int *parameters, int numberOfEvents){
     if (XEventsQueued((static_cast<Display *>(display)), QueuedAlready) < numberOfEvents){
         eventTypes[0] = -1;
@@ -170,4 +336,13 @@ void MyWindow::getPendingEvents(int *eventTypes, u_int *parameters, int numberOf
             parameters[i] = static_cast<XEvent *>(event)->xkey.keycode;
         }
     }
+}
+#endif
+
+int MyWindow::getWindowWidth(){
+    return windowWidth;
+}
+
+int MyWindow::getWindowHeight(){
+    return windowHeight;
 }

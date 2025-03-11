@@ -1604,9 +1604,6 @@ void Renderer::adjustThreadCount(int8_t adjustment){
 }
 
 void Renderer::handleEvents(bool &isRunning, bool &isPaused){
-    #define Expose 12
-    #define KeyPress 2
-
     int numberOfPendingEvents = myWindow->getNumberOfPendingEvents();
     int eventTypes[numberOfPendingEvents];
     u_int parameters[numberOfPendingEvents];
