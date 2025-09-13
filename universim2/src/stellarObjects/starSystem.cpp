@@ -1,8 +1,8 @@
 #include <string>
-#include "timer.hpp"
 #include "star.hpp"
 #include "starSystem.hpp"
-#include "constants.hpp"
+#include "../helpers/constants.hpp"
+#include "../helpers/timer.hpp"
 
 static int randomStarSystemsGenerated = 0;
 

@@ -2,20 +2,50 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
-// #include <Windows.h>
-#include "main.hpp"
-#include "window.hpp"
-#include "timer.hpp"
-// #include "renderer.hpp"
-#include "galacticCore.hpp"
-#include "starSystem.hpp"
-#include "star.hpp"
-#include "planet.hpp"
-#include "moon.hpp"
-#include "comet.hpp"
-#include "constants.hpp"
-#include "date.hpp"
-#include "tree.hpp"
+#include <vector>
+#include <mutex>
+#include <functional>
+
+#include "renderer.hpp"
+
+#include "stellarObjects/stellarObject.hpp"
+#include "stellarObjects/galacticCore.hpp"
+#include "stellarObjects/starSystem.hpp"
+#include "stellarObjects/star.hpp"
+#include "stellarObjects/planet.hpp"
+#include "stellarObjects/moon.hpp"
+#include "stellarObjects/comet.hpp"
+
+#include "graphicInterface/window.hpp"
+#include "helpers/constants.hpp"
+#include "helpers/date.hpp"
+#include "helpers/tree.hpp"
+#include "helpers/timer.hpp"
+
+#define ADD_STARSYSTEM(a) galaxies->back()->addChild(a)
+#define ADD_STAR(a) galaxies->back()->getChildren()->back()->addChild(a)
+#define ADD_PLANET(a) galaxies->back()->getChildren()->back()->getChildren()->back()->addChild(a)
+#define ADD_MOON(a) galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back()->addChild(a)
+#define ADD_COMET(a) galaxies->back()->getChildren()->back()->getChildren()->back()->addChild(a)
+
+#define TIMESTEP_LOCAL 120 // Timestep per update iteration in seconds
+// #define TIMESTEP_LOCAL 60 // Timestep per update iteration in seconds
+// #define TIMESTEP_LOCAL 20 // Timestep per update iteration in seconds
+// #define TIMESTEP_LOCAL 1 // Timestep per update iteration in seconds
+
+// #define TIMESTEP_LOCAL 3600 * 24 * 365 * 100L
+#define TIMESTEP_STELLAR 3600 * 24 * 365 * 100L
+
+#define LONESTAR_BACKOFF_AMOUNT 720
+
+#define MICROSECONDS_PER_FRAME 1000000/20
+
+void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, bool *isRunning, bool *isPaused, Date *date, int *optimalTimeLocalUpdate, Renderer *renderer, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady);
+void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<StellarObject*> *galaxies, bool *isRunning, Renderer *renderer, std::vector<StellarObject*> *allObjects, std::mutex *localUpdateIsReady, std::mutex *stellarUpdateIsReady);
+void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock);
+void updateLoneStarStarsystemMultiThread(std::vector<StellarObject*> *loneStars, int begin, int end, long double timestep);
+void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock, std::function<long double(double)> densityFunction);
+void readMoonFile(std::string fileLocation, StellarObject *parent);
 
 // #define TOTAL_STARSYSTEMS 100000
 #define TOTAL_STARSYSTEMS 50000
@@ -49,6 +79,7 @@
 
 int main(int argc, char **argv){
 	// Initialise base things
+	printf("Starting main\n");
     MyWindow myWindow;
     bool isRunning = true;
     bool isPaused = true;
@@ -60,18 +91,22 @@ int main(int argc, char **argv){
 	std::mutex stellarUpdateIsReady;
 	const int optimalTimeDrawing = MICROSECONDS_PER_FRAME;									//In microseconds
 	int optimalTimeLocalUpdate = MICROSECONDS_PER_FRAME * 2;								//In microseconds - I don't know why it has this value
+	printf("Started init\n");																
 
 	// Start the renderer
 	Renderer renderer(&myWindow, &galaxies, &allObjects, &date, &currentlyUpdatingOrDrawingLock, &optimalTimeLocalUpdate);
+	printf("Started renderer\n");																
 
 	// The window needs a little time to show up properly, don't know why
 	renderer.drawWaitingScreen();
 	std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	renderer.drawWaitingScreen();
+	printf("Drawn first screen\n");																
 
 	// Initialise all objects that ought to appear in the simulation
 	initialiseStellarObjects(&galaxies, &allObjects, &currentlyUpdatingOrDrawingLock);
 	renderer.initialiseReferenceObject();
+	printf("Initialised stellar objects\n");																
 
 	struct timespec prevTime;
 	struct timespec currTime;
@@ -314,37 +349,37 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 }
 
 void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, std::mutex *currentlyUpdatingOrDrawingLock){
-	// printf("Entered initi function\n");
+	printf("Entered initStellarObjects function\n");
 	// Initialise all objects
 	galaxies->push_back(new GalacticCore("Sagittarius A*", 1, 1, 0, 0xFFFF00));
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 1.047)); 			// this inclinations is from the solar plan to the galactic plane, thus not of interest
 	ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0.07, 0.1));
 	ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
-    ADD_PLANET(new Planet("Mercury", 0.3829, 0.055, 0.387098, 0.205630, 7.005*PI/180, 0));
-    ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180, 0));
+	ADD_PLANET(new Planet("Mercury", 0.3829, 0.055, 0.387098, 0.205630, 7.005*PI/180, 0));
+	ADD_PLANET(new Planet("Venus", 0.9499, 0.815, 0.723332, 0.006772, 3.39458*PI/180, 0));
 	ADD_PLANET(new Planet("Earth", 1, 1, 1, 0.0167086, 0, 0));
-    ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
-    ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180, 0));
-    ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
-    ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
-    ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180, 0));
+	ADD_MOON(new Moon("Moon", 1, 1, 1, 0.0549, 5.145*PI/180));
+	ADD_PLANET(new Planet("Mars", 0.532, 0.107, 1.52368055, 0.0934, 1.85*PI/180, 0));
+	ADD_MOON(new Moon("Phobos", 11266.7/lunarRadius, 1.0659e16/lunarMass, 9376000/distanceEarthMoon, 0.0151, 26.04*PI/180));
+	ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
+	ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180, 0));
 	// Read file of Jupiters moons
-	readMoonFile("./files/MoonsOfJupiterAdjusted.csv", galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back());
-    ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180, 1));
+	readMoonFile("/home/tim/Development/Universim2/universim2/src/files/MoonsOfJupiterAdjusted.csv", galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back());
+	ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180, 1));
 	// Read file of Saturns moons
-    ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180, 0));
+	ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180, 0));
 	// Read file of Uranus' moons
-    ADD_PLANET(new Planet("Neptune", 24622000/terranRadius, 17.147, 30.07, 0.008678, 1.77*PI/180, 0));
+	ADD_PLANET(new Planet("Neptune", 24622000/terranRadius, 17.147, 30.07, 0.008678, 1.77*PI/180, 0));
 	// readMoonFile("./files/MoonsOfNeptuneAdjusted.csv", galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back());
 	// Read file of Neptunes moons
-    ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180, 0));
+	ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180, 0));
 	ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
 
 	// printf("Added the solar system\n");
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0, 0));
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
-    // ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
-    // ADD_MOON(new Moon("Moon", 1, 1, 1, 0, 0));
+	// ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
+	// ADD_MOON(new Moon("Moon", 1, 1, 1, 0, 0));
 
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 0.01, 0, 0));
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
@@ -361,21 +396,21 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// printf("Defined density functions\n");
 	// printf("densityFunction(0.25) = %.0Lf\n", densityFunction(0.25));
 	// printf("a = %Lf, perc: %Lf\n", characteristicScaleLength, densityFunction(0.25)/characteristicScaleLength);
-    std::vector<std::thread> threads;
+	std::vector<std::thread> threads;
 	// min, max is macro in windows.h -> replace
 	// threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
 	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
 	// printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
-    amount = totalStarsystems/threadNumber;
-    for(int i=0;i<threadNumber-1;i++){
+	amount = totalStarsystems/threadNumber;
+	for(int i=0;i<threadNumber-1;i++){
 		// printf("Started thread number %d\n", i);
         threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock, densityFunction));
-    }
-    threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock, densityFunction));
+	}
+	threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock, densityFunction));
 	// printf("Starting last thread\n");
 	for(int i=0;i<threadNumber;i++){
-        threads.at(i).join();
-    }
+	threads.at(i).join();
+	}
 	// printf("Threads completed their task\n");
 
 	// We store every object in a single vector for improved access in certain functions
@@ -393,7 +428,8 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 			allObjects->push_back(starSystem);
         }
         allObjects->push_back(galacticCore);
-    }
+	}
+
 	// printf("Created all stellar objects\n");
 
 	// Place all objects in space and set correct speed
@@ -404,9 +440,8 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 
 	// printf("Distance of moon and earth: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
 	// printf("Distance of moon and CoM earthsystem: %f\n", (galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getCentreOfMass() - galaxies->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getChildren()->at(0)->getPosition()).getLength());
-	printf("Placed all stellar objects\n");
-}
-void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock, std::function<long double(double)> densityFunction){
+	}
+	void spawnStarSystemsMultiThread(std::vector<StellarObject*> *globalGalaxies, int amount, std::mutex *currentlyUpdatingOrDrawingLock, std::function<long double(double)> densityFunction){
 	// globalGalaxies is called like that, because then we can use the name "galaxies" and don't have to change the define
 	std::vector<StellarObject*> *galaxies = new std::vector<StellarObject*>();
 	galaxies->push_back(new GalacticCore("", 0, 0, 0));
@@ -453,68 +488,3 @@ void readMoonFile(std::string fileLocation, StellarObject *parent){
     moonFile.close();
 }
 
-
-// LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-//     switch (uMsg) {
-//         case WM_PAINT: {
-//             PAINTSTRUCT ps;
-//             HDC hdc = BeginPaint(hwnd, &ps);
-
-//             // Draw white stripes
-//             RECT rect;
-//             GetClientRect(hwnd, &rect);
-//             HBRUSH whiteBrush = CreateSolidBrush(RGB(255, 0, 0));
-//             FillRect(hdc, &rect, whiteBrush);
-
-//             Rectangle(hdc, 100, 100, 300, 200);
-//             Ellipse(hdc, 400, 100, 600, 300);
-
-//             DeleteObject(whiteBrush);
-
-//             EndPaint(hwnd, &ps);
-//             return 0;
-//         }
-//         case WM_CLOSE:
-//             PostQuitMessage(0);
-//             return 0;
-//         default:
-//             return DefWindowProc(hwnd, uMsg, wParam, lParam);
-//     }
-// }
-
-// int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-//     const wchar_t CLASS_NAME[] = L"SampleWindowClass";
-
-//     WNDCLASSW wc = {};  // Use WNDCLASSW for wide character strings
-//     wc.lpfnWndProc = WindowProc;
-//     wc.hInstance = hInstance;
-//     wc.lpszClassName = CLASS_NAME;
-
-//     RegisterClassW(&wc);  // Use RegisterClassW
-
-//     HWND hwnd = CreateWindowExW(
-//         0,
-//         CLASS_NAME,
-//         L"White Stripes Window",
-//         WS_OVERLAPPEDWINDOW,
-//         CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
-//         NULL,
-//         NULL,
-//         hInstance,
-//         NULL
-//     );
-
-//     if (hwnd == NULL) {
-//         return 0;
-//     }
-
-//     ShowWindow(hwnd, nCmdShow);
-
-//     MSG msg = {};
-//     while (GetMessage(&msg, NULL, 0, 0)) {
-//         TranslateMessage(&msg);
-//         DispatchMessage(&msg);
-//     }
-
-//     return (int)msg.wParam;
-// }

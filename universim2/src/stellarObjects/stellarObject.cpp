@@ -3,9 +3,9 @@
 #include <thread>
 #include "stellarObject.hpp"
 #include "starSystem.hpp"
-#include "constants.hpp"
-#include "tree.hpp"
-#include "timer.hpp"
+#include "../helpers/constants.hpp"
+#include "../helpers/tree.hpp"
+#include "../helpers/timer.hpp"
 
 StellarObject::StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination){
     // this->name = name;

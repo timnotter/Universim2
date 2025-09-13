@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <cmath>
 #include "stellarObjectRenderFace.hpp"
-#include "stellarObject.hpp"
-#include "constants.hpp"
+#include "../stellarObjects/stellarObject.hpp"
+#include "../helpers/constants.hpp"
 #include <map>
 
 StellarObjectRenderFace::StellarObjectRenderFace(){

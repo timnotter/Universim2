@@ -14,9 +14,9 @@
 
 #include <vector>
 #include <string>
-#include "positionVector.hpp"
-#include "stellarObjectRenderFace.hpp"
-#include "simplexNoise.hpp"
+#include "../helpers/positionVector.hpp"
+#include "../helpers/simplexNoise.hpp"
+#include "../graphicInterface/stellarObjectRenderFace.hpp"
 
 class StarSystem;
 class Tree;

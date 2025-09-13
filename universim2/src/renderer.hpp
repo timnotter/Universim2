@@ -8,16 +8,19 @@
 #include <cstring>
 #include <atomic>
 #include <mutex>
-#include "constants.hpp"
-#include "window.hpp"
-#include "stellarObject.hpp"
-#include "starSystem.hpp"
-#include "positionVector.hpp"
-#include "matrix3d.hpp"
-#include "drawObject.hpp"
-#include "date.hpp"
-#include "stellarObjectRenderFace.hpp"
-#include "point2d.hpp"
+
+#include "stellarObjects/stellarObject.hpp"
+#include "stellarObjects/starSystem.hpp"
+
+#include "graphicInterface/window.hpp"
+#include "graphicInterface/stellarObjectRenderFace.hpp"
+#include "graphicInterface/drawObject.hpp"
+#include "graphicInterface/point2d.hpp"
+
+#include "helpers/constants.hpp"
+#include "helpers/date.hpp"
+#include "helpers/positionVector.hpp"
+#include "helpers/matrix3d.hpp"
 
 #define RENDERER_MAX_THREAD_COUNT 8
 #define INCREASE_THREAD_COUNT 1

@@ -4,9 +4,9 @@
 #include <cmath>
 #include <thread>
 #include "renderer.hpp"
-#include "star.hpp"
-#include "point2d.hpp"
-#include "plane.hpp"
+#include "stellarObjects/star.hpp"
+#include "graphicInterface/point2d.hpp"
+#include "helpers/plane.hpp"
 
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, std::vector<StellarObject*> *allObjects, Date *date, std::mutex *currentlyUpdatingOrDrawingLock, int *optimalTimeLocalUpdate){
     this->myWindow = myWindow;

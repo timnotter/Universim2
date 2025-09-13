@@ -2,9 +2,8 @@
 #define STELLAR_OBJECT_RENDER_FACE_HPP
 
 #include <vector>
-// #include "stellarObject.hpp"
-#include "renderTriangle.hpp"
-#include "matrix3d.hpp"
+#include "../graphicInterface/renderTriangle.hpp"
+#include "../helpers/matrix3d.hpp"
 
 #define X_AXIS 0
 #define Y_AXIS 1

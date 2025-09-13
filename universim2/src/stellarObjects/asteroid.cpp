@@ -1,5 +1,5 @@
 #include "asteroid.hpp"
-#include "timer.hpp"
+#include "../helpers/timer.hpp"
 #include "cmath"
 
 Asteroid::Asteroid(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination) : StellarObject(name, 6, radius, mass, meanDistance, eccentricity, inclination){

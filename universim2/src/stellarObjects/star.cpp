@@ -1,8 +1,9 @@
 #include <fstream>
+#include <iostream>
 #include <string>
-#include "timer.hpp"
 #include "star.hpp"
-#include "constants.hpp"
+#include "../helpers/timer.hpp"
+#include "../helpers/constants.hpp"
 
 static int randomStarsGenerated = 0;
 
@@ -68,9 +69,12 @@ void Star::findColour(){
     int b;
     int hex;
     std::ifstream starColourFile;
-    starColourFile.open("./files/StarColours.txt");
+
+	const char* filename = "/home/tim/Development/Universim2/universim2/src/files/StarColours.txt";
+
+    starColourFile.open(filename);
     starColourFile >> temp;
-    // printf("temp: %s\n", temp.c_str());
+//    printf("temp: %s\n", temp.c_str());
     while((std::stoi(temp.c_str())) != surfaceTemperatureForSearching){
         for(int i=0;i<13;i++) {
             // printf("temp: %s\n", temp.c_str());

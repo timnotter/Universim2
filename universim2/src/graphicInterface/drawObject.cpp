@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "renderer.hpp"
+#include "../renderer.hpp"
 #include "point2d.hpp"
 
 DrawObject::DrawObject(double distance, short type){

@@ -1,7 +1,7 @@
 #include <iostream>
 #include "window.hpp"
-#include "renderer.hpp"
-#include "constants.hpp"
+#include "../renderer.hpp"
+#include "../helpers/constants.hpp"
 #include "point2d.hpp"
 #ifdef _WIN32
 // #include <Windows.h>
