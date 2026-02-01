@@ -5,6 +5,8 @@
 #include "../helpers/timer.hpp"
 #include "../helpers/constants.hpp"
 
+#define STAR_COLOURS_FILEPATH "/home/tim/programming/cpp/Universim2/universim2/src/files/StarColours.txt"
+
 static int randomStarsGenerated = 0;
 
 Star::Star(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination, int surfaceTemperature) : StellarObject(name, 2, radius, mass, meanDistance, eccentricity, inclination){
@@ -70,7 +72,7 @@ void Star::findColour(){
     int hex;
     std::ifstream starColourFile;
 
-	const char* filename = "/home/tim/Development/Universim2/universim2/src/files/StarColours.txt";
+	const char* filename = STAR_COLOURS_FILEPATH;
 
     starColourFile.open(filename);
     starColourFile >> temp;

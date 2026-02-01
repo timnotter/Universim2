@@ -33,8 +33,9 @@
 // #define TIMESTEP_LOCAL 20 // Timestep per update iteration in seconds
 // #define TIMESTEP_LOCAL 1 // Timestep per update iteration in seconds
 
-// #define TIMESTEP_LOCAL 3600 * 24 * 365 * 100L
-#define TIMESTEP_STELLAR 3600 * 24 * 365 * 100L
+// Enable this line for local and stellar updates to be handled the same, such that we can see stellar movement
+//#define TIMESTEP_LOCAL 3600 * 24 * 365 * 100L * 100
+#define TIMESTEP_STELLAR 3600 * 24 * 365 * 100L * 100
 
 #define LONESTAR_BACKOFF_AMOUNT 720
 
@@ -49,6 +50,11 @@ void readMoonFile(std::string fileLocation, StellarObject *parent);
 
 // #define TOTAL_STARSYSTEMS 100000
 #define TOTAL_STARSYSTEMS 50000
+
+#define MAX_CREATE_THREADS 1
+
+#define MOONS_OF_JUPITER_FILE_PATH "/home/tim/programming/cpp/Universim2/universim2/src/files/MoonsOfJupiterAdjusted.csv"
+#define MOONS_OF_NEPTUNE_FILE_PATH "/home/tim/programming/cpp/Universim2/universim2/src/files/MoonsOfNeptuneAdjusted.csv"
 
 // #define DEBUG
 
@@ -223,7 +229,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stellar
 			stellarUpdateIsReady->lock();
 			localUpdateIsReady->lock();
 			stellarUpdateIsReady->unlock();
-			date->incYear(100);
+			// date->incYear(100);
 			continue;
 		}
 
@@ -338,6 +344,8 @@ void stellarUpdate(std::mutex *currentlyUpdatingOrDrawingLock, std::vector<Stell
 		}
 		stellarUpdateIsReady->unlock();
 		localUpdateIsReady->unlock();
+
+    // TODO: What the fuck were you thinking! What is this abomination
 		// Make sure the local update thread has picked up the localUpdateIsReady lock
 		while(localUpdateIsReady->try_lock()){
 			localUpdateIsReady->unlock();
@@ -364,7 +372,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	ADD_MOON(new Moon("Deimos", 6200/lunarRadius, 1.4762e15/lunarMass, 23463200/distanceEarthMoon, 0.00033, 27.58*PI/180));
 	ADD_PLANET(new Planet("Jupiter", 10.973, 317.8, 5.204, 0.0489, 1.303*PI/180, 0));
 	// Read file of Jupiters moons
-	readMoonFile("/home/tim/Development/Universim2/universim2/src/files/MoonsOfJupiterAdjusted.csv", galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back());
+	readMoonFile(MOONS_OF_JUPITER_FILE_PATH, galaxies->back()->getChildren()->back()->getChildren()->back()->getChildren()->back());
 	ADD_PLANET(new Planet("Saturn", 8.552, 95.159, 9.5826, 0.0565, 2.485*PI/180, 1));
 	// Read file of Saturns moons
 	ADD_PLANET(new Planet("Uranus", 25362000/terranRadius, 14.536, 19.19126, 0.04717, 0.773*PI/180, 0));
@@ -375,7 +383,7 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	ADD_PLANET(new Planet("Pluto", 0.1868, 0.00218, 39.482, 0.2488, 17.16*PI/180, 0));
 	ADD_MOON(new Moon("Charon", 606000/lunarRadius, 1.586e21/lunarMass, 17181000/distanceEarthMoon, 0.0002, 112.783*PI/180));
 
-	// printf("Added the solar system\n");
+	printf("Added the solar system\n");
 	// ADD_STARSYSTEM(new StarSystem("Solar System", 1, 0, 0));
 	// ADD_STAR(new Star("Sun", 1, 1, 0, 0, 0, 5770));
 	// ADD_PLANET(new Planet("Earth", 1, 1, 1, 0, 0));
@@ -398,20 +406,19 @@ void initialiseStellarObjects(std::vector<StellarObject*> *galaxies, std::vector
 	// printf("a = %Lf, perc: %Lf\n", characteristicScaleLength, densityFunction(0.25)/characteristicScaleLength);
 	std::vector<std::thread> threads;
 	// min, max is macro in windows.h -> replace
-	// threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
-	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, 16);
-	// printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
+	threadNumber = std::min((std::max(totalStarsystems/10, 16))/16, MAX_CREATE_THREADS);
+	printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
 	amount = totalStarsystems/threadNumber;
 	for(int i=0;i<threadNumber-1;i++){
 		// printf("Started thread number %d\n", i);
         threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, amount, currentlyUpdatingOrDrawingLock, densityFunction));
 	}
 	threads.push_back(std::thread (spawnStarSystemsMultiThread, galaxies, totalStarsystems - (threadNumber-1)*amount, currentlyUpdatingOrDrawingLock, densityFunction));
-	// printf("Starting last thread\n");
+	printf("Starting last thread\n");
 	for(int i=0;i<threadNumber;i++){
 	threads.at(i).join();
 	}
-	// printf("Threads completed their task\n");
+	printf("Threads completed their task\n");
 
 	// We store every object in a single vector for improved access in certain functions
 	for(StellarObject *galacticCore: *galaxies){

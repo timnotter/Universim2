@@ -22,7 +22,8 @@
 #include "helpers/positionVector.hpp"
 #include "helpers/matrix3d.hpp"
 
-#define RENDERER_MAX_THREAD_COUNT 8
+//#define RENDERER_MAX_THREAD_COUNT 8
+#define RENDERER_MAX_THREAD_COUNT 2
 #define INCREASE_THREAD_COUNT 1
 #define DECREASE_THREAD_COUNT -1
 
