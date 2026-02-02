@@ -33,14 +33,37 @@ Here is the code for a CMakeLists file to compile to whole thing:
 
     find_package(X11)
     find_package (Threads)
-    find_package(OpenCL)
+    #find_package(OpenCL)
 
-    add_executable(universim2 main.cpp renderer.cpp window.cpp positionVector.cpp point2d.cpp plane.cpp matrix3d.cpp 
-    drawObject.cpp stellarObjectRenderFace.cpp renderTriangle.cpp 
-    stellarObject.cpp galacticCore.cpp starSystem.cpp star.cpp planet.cpp moon.cpp comet.cpp 
-    date.cpp tree.cpp treeCodeNode.cpp simplexNoise.cpp)
+    add_executable(universim2 
+      src/main.cpp 
+      src/renderer.cpp 
+
+      src/graphicInterface/window.cpp 
+      src/graphicInterface/point2d.cpp 
+      src/graphicInterface/drawObject.cpp 
+      src/graphicInterface/stellarObjectRenderFace.cpp 
+      src/graphicInterface/renderTriangle.cpp 
+
+      src/stellarObjects/stellarObject.cpp 
+      src/stellarObjects/galacticCore.cpp 
+      src/stellarObjects/starSystem.cpp 
+      src/stellarObjects/star.cpp 
+      src/stellarObjects/planet.cpp 
+      src/stellarObjects/moon.cpp 
+      src/stellarObjects/comet.cpp 
+      src/stellarObjects/asteroid.cpp 
+
+      src/helpers/positionVector.cpp 
+      src/helpers/plane.cpp 
+      src/helpers/matrix3d.cpp 
+      src/helpers/date.cpp 
+      src/helpers/tree.cpp 
+      src/helpers/treeCodeNode.cpp 
+      src/helpers/timer.cpp
+      src/helpers/simplexNoise.cpp)
     add_compile_options (-o, -O3, -pthread, -g)
 
     target_link_libraries(universim2 ${X11_LIBRARIES})
     target_link_libraries(universim2 ${CMAKE_THREAD_LIBS_INIT})
-    target_link_libraries(universim2 ${OpenCL_INCLUDE_DIRS})
+    #target_link_libraries(universim2 ${OpenCL_INCLUDE_DIRS})
