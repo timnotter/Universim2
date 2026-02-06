@@ -1,8 +1,8 @@
 #include <cmath>
 #include <cstdio>
 #include <sstream>
-#include "positionVector.hpp"
-#include "matrix3d.hpp"
+#include "helpers/positionVector.hpp"
+#include "helpers/matrix3d.hpp"
 
 
 PositionVector::PositionVector(){

@@ -1,7 +1,7 @@
 #ifndef MATRIX3D_HPP
 #define MATRIX3D_HPP
 
-#include "positionVector.hpp"
+#include "helpers/positionVector.hpp"
 
 class Matrix3d{
 private:

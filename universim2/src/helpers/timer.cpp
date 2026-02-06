@@ -1,5 +1,5 @@
 #include <ctime>
-#include "timer.hpp"
+#include "helpers/timer.hpp"
 
 #ifdef _WIN32
 int getTime(timespec *time, int arg){

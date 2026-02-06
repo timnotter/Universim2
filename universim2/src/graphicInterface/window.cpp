@@ -1,8 +1,8 @@
 #include <iostream>
-#include "window.hpp"
-#include "../renderer.hpp"
-#include "../helpers/constants.hpp"
-#include "point2d.hpp"
+#include "graphicInterface/window.hpp"
+#include "graphicInterface/renderer.hpp"
+#include "graphicInterface/point2d.hpp"
+#include "helpers/constants.hpp"
 #ifdef _WIN32
 // #include <Windows.h>
 // #include <gdiplus.h>

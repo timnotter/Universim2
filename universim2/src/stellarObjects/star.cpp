@@ -1,9 +1,9 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "star.hpp"
-#include "../helpers/timer.hpp"
-#include "../helpers/constants.hpp"
+#include "stellarObjects/star.hpp"
+#include "helpers/timer.hpp"
+#include "helpers/constants.hpp"
 
 #define STAR_COLOURS_FILEPATH "/home/tim/programming/cpp/Universim2/universim2/src/files/StarColours.txt"
 

@@ -6,7 +6,8 @@
 #include <mutex>
 #include <functional>
 
-#include "renderer.hpp"
+#include "graphicInterface/renderer.hpp"
+#include "graphicInterface/window.hpp"
 
 #include "stellarObjects/stellarObject.hpp"
 #include "stellarObjects/galacticCore.hpp"
@@ -16,7 +17,6 @@
 #include "stellarObjects/moon.hpp"
 #include "stellarObjects/comet.hpp"
 
-#include "graphicInterface/window.hpp"
 #include "helpers/constants.hpp"
 #include "helpers/date.hpp"
 #include "helpers/tree.hpp"

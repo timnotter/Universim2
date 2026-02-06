@@ -1,9 +1,9 @@
 #ifndef TREE_CODE_NODE
 #define TREE_CODE_NODE
 #include <vector>
-#include "../stellarObjects/stellarObject.hpp"
-#include "../helpers/positionVector.hpp"
-#include "../helpers/matrix3d.hpp"
+#include "stellarObjects/stellarObject.hpp"
+#include "helpers/positionVector.hpp"
+#include "helpers/matrix3d.hpp"
 
 #define MAX_ANGLE 0.5       // Theta = maximum angle, such that node is used for gravitational computation
 // #define EPSILON 0.0001      // Gravitational Softening

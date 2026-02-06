@@ -2,7 +2,7 @@
 #define COMET_HPP
 
 #include <vector>
-#include "stellarObject.hpp"
+#include "stellarObjects/stellarObject.hpp"
 
 class Comet : public StellarObject{
 public:

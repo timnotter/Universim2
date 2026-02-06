@@ -31,37 +31,39 @@ Here is the code for a CMakeLists file to compile to whole thing:
     cmake_minimum_required(VERSION 3.10)
     project(universim2)
 
+    include_directories(${PROJECT_SOURCE_DIR}/universim2/include)
+
     find_package(X11)
     find_package (Threads)
     #find_package(OpenCL)
 
     add_executable(universim2 
-      src/main.cpp 
-      src/renderer.cpp 
+      universim2/src/main.cpp 
 
-      src/graphicInterface/window.cpp 
-      src/graphicInterface/point2d.cpp 
-      src/graphicInterface/drawObject.cpp 
-      src/graphicInterface/stellarObjectRenderFace.cpp 
-      src/graphicInterface/renderTriangle.cpp 
+      universim2/src/graphicInterface/renderer.cpp 
+      universim2/src/graphicInterface/window.cpp 
+      universim2/src/graphicInterface/point2d.cpp 
+      universim2/src/graphicInterface/drawObject.cpp 
+      universim2/src/graphicInterface/stellarObjectRenderFace.cpp 
+      universim2/src/graphicInterface/renderTriangle.cpp 
 
-      src/stellarObjects/stellarObject.cpp 
-      src/stellarObjects/galacticCore.cpp 
-      src/stellarObjects/starSystem.cpp 
-      src/stellarObjects/star.cpp 
-      src/stellarObjects/planet.cpp 
-      src/stellarObjects/moon.cpp 
-      src/stellarObjects/comet.cpp 
-      src/stellarObjects/asteroid.cpp 
+      universim2/src/stellarObjects/stellarObject.cpp 
+      universim2/src/stellarObjects/galacticCore.cpp 
+      universim2/src/stellarObjects/starSystem.cpp 
+      universim2/src/stellarObjects/star.cpp 
+      universim2/src/stellarObjects/planet.cpp 
+      universim2/src/stellarObjects/moon.cpp 
+      universim2/src/stellarObjects/comet.cpp 
+      universim2/src/stellarObjects/asteroid.cpp 
 
-      src/helpers/positionVector.cpp 
-      src/helpers/plane.cpp 
-      src/helpers/matrix3d.cpp 
-      src/helpers/date.cpp 
-      src/helpers/tree.cpp 
-      src/helpers/treeCodeNode.cpp 
-      src/helpers/timer.cpp
-      src/helpers/simplexNoise.cpp)
+      universim2/src/helpers/positionVector.cpp 
+      universim2/src/helpers/plane.cpp 
+      universim2/src/helpers/matrix3d.cpp 
+      universim2/src/helpers/date.cpp 
+      universim2/src/helpers/tree.cpp 
+      universim2/src/helpers/treeCodeNode.cpp 
+      universim2/src/helpers/timer.cpp
+      universim2/src/helpers/simplexNoise.cpp)
     add_compile_options (-o, -O3, -pthread, -g)
 
     target_link_libraries(universim2 ${X11_LIBRARIES})

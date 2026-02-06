@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "../renderer.hpp"
-#include "point2d.hpp"
+#include "graphicInterface/renderer.hpp"
+#include "graphicInterface/point2d.hpp"
 
 DrawObject::DrawObject(double distance, short type){
     this->distance = distance;

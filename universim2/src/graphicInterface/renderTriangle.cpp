@@ -1,4 +1,4 @@
-#include "renderTriangle.hpp"
+#include "graphicInterface/renderTriangle.hpp"
 
 RenderTriangle::RenderTriangle(PositionVector point1, PositionVector point2, PositionVector point3){
     this->point1 = point1;

@@ -1,7 +1,7 @@
 #ifndef PLANE_HPP
 #define PLANE_HPP
 
-#include "positionVector.hpp"
+#include "helpers/positionVector.hpp"
 
 class Plane{
 private:

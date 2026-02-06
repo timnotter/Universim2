@@ -1,7 +1,7 @@
 #include "cmath"
-#include "planet.hpp"
-#include "asteroid.hpp"
-#include "../helpers/timer.hpp"
+#include "stellarObjects/planet.hpp"
+#include "stellarObjects/asteroid.hpp"
+#include "helpers/timer.hpp"
 
 Planet::Planet(const char *name, double radius, double mass, double meanDistance, double eccentricity, double inclination, int rings) : StellarObject(name, 3, radius, mass, meanDistance, eccentricity, inclination){
     // ------------------------------------------------- TODO -------------------------------------------------

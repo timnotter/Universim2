@@ -2,7 +2,7 @@
 #define STAR_HPP
 
 #include <vector>
-#include "stellarObject.hpp"
+#include "stellarObjects/stellarObject.hpp"
 
 class Star : public StellarObject{
     private:

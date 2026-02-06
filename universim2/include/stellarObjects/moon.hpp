@@ -2,7 +2,7 @@
 #define MOON_HPP
 
 #include <vector>
-#include "stellarObject.hpp"
+#include "stellarObjects/stellarObject.hpp"
 
 class Moon : public StellarObject{
 public:

@@ -2,7 +2,7 @@
 #define GALACTICCORE_HPP
 
 #include <vector>
-#include "stellarObject.hpp"
+#include "stellarObjects/stellarObject.hpp"
 
 class GalacticCore : public StellarObject{
 public:

@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <functional>
-#include "stellarObject.hpp"
+#include "stellarObjects/stellarObject.hpp"
 
 class StarSystem : public StellarObject{
 private:

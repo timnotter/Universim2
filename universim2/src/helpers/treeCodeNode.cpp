@@ -2,9 +2,9 @@
 // #include <unistd.h>
 #include <cmath>
 #include <thread>
-#include "treeCodeNode.hpp"
-#include "tree.hpp"
-#include "constants.hpp"
+#include "helpers/treeCodeNode.hpp"
+#include "helpers/tree.hpp"
+#include "helpers/constants.hpp"
 
 // TreeCodeNode::TreeCodeNode(long double x, long double y, long double z, long double length, long double width, long double height){
 //     minCornerPosition = PositionVector(x, y, z);

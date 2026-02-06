@@ -1,7 +1,7 @@
 #ifndef RENDER_TRIANGLE_HPP
 #define RENDER_TRIANGLE_HPP
 
-#include "../helpers/positionVector.hpp"
+#include "helpers/positionVector.hpp"
 
 class RenderTriangle{
 private:

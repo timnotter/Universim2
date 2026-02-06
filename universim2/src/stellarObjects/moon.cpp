@@ -1,4 +1,4 @@
-#include "moon.hpp"
+#include "stellarObjects/moon.hpp"
 
 Moon::Moon(const char *name, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination) : StellarObject(name, 4, radius, mass, meanDistance, eccentricity, inclination){
     // ------------------------------------------------- TODO -------------------------------------------------

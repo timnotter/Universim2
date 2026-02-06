@@ -1,9 +1,9 @@
 #include <cstdio>
 #include <vector>
 #include <thread>
-#include "timer.hpp"
-#include "tree.hpp"
-#include "constants.hpp"
+#include "helpers/timer.hpp"
+#include "helpers/tree.hpp"
+#include "helpers/constants.hpp"
 
 static int counter = 0;
 
