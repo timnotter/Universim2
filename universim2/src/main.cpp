@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
         // printf("Handling events took %d mics\n", updateTime);
 
         // Drawing the screen
-        // renderer.draw();
+        renderer.draw();
         renderer.drawOpenGL();
         // After drawing the screen we calculate the time it took. If it was
         // faster than the framrate permits, the thread goes to sleep for the
