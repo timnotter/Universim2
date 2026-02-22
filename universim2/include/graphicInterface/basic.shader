@@ -1,6 +1,6 @@
 #shader VERTEX
 // Vertex shader
-#version 460 core
+#version 450 core
 layout (location = 0) in vec2 aPos;
 
 void main() {
@@ -9,7 +9,7 @@ void main() {
 
 #shader FRAGMENT
 // Fragment shader
-#version 460 core
+#version 450 core
 layout (location = 0) out vec4 FragColor;
 
 uniform vec4 u_Color;

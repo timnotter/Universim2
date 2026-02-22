@@ -104,10 +104,10 @@ unsigned int openGLSetup(GLFWwindow **window, unsigned int *shaderProgram,
     glfwSetErrorCallback(error_callback);
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    // glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
-    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+    // glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 
     // Create window
     *window = glfwCreateWindow(800, 600, "Universim 2", nullptr, nullptr);
