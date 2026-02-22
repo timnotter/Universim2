@@ -19,6 +19,7 @@
 #include "stellarObjects/stellarObject.hpp"
 
 #include "helpers/constants.hpp"
+#include "helpers/threadUtils.hpp"
 #include "helpers/date.hpp"
 #include "helpers/timer.hpp"
 #include "helpers/tree.hpp"
@@ -78,8 +79,6 @@ void readMoonFile(std::string fileLocation, StellarObject *parent);
 
 // #define TOTAL_STARSYSTEMS 100000
 #define TOTAL_STARSYSTEMS 50000
-
-#define MAX_CREATE_THREADS 1
 
 #define MOONS_OF_JUPITER_FILE_PATH                                             \
   "/home/tim/programming/cpp/Universim2/universim2/src/files/"                 \
@@ -186,12 +185,12 @@ int main(int argc, char **argv) {
     // printf("Handling events took %d mics\n", updateTime);
 
     // Drawing the screen
-    renderer.draw();
+    //renderer.draw();
+	renderer.drawOpenGL();
     // After drawing the screen we calculate the time it took. If it was faster
     // than the framrate permits, the thread goes to sleep for the remaining
     // time. If it was was way to fast, we decrease the number of threads the
     // renderer has available, if it was to slow, we increase it up to a maximum
-    // (set in teh renderer.hpp file as RENDERER_MAX_THREAD_COUNT)
     getTime(&currTime, 0);
     updateTime = ((1000000000 * (currTime.tv_sec - prevTime.tv_sec) +
                    (currTime.tv_nsec - prevTime.tv_nsec)) /
@@ -218,6 +217,7 @@ int main(int argc, char **argv) {
     // printf("Sleeptime: %dmics\n",
     // ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
   }
+  renderer.cleanupOpenGL();
 
   // Recursively free everything
   for (StellarObject *galacticCore : galaxies) {
@@ -322,7 +322,7 @@ void localUpdate(std::mutex *currentlyUpdatingOrDrawingLock,
     if (loneStarUpdateCounter++ == LONESTAR_BACKOFF_AMOUNT) {
       loneStarUpdateCounter = 0;
       getTime(&prevTime, 0);
-      int threadNumber = LOCAL_UPDATE_THREAD_COUNT;
+      int threadNumber = getThreadCountLocalUpdate();
       int amount = loneStars.size() / threadNumber;
       std::vector<std::thread> threads;
       for (int i = 0; i < threadNumber - 1; i++) {
@@ -526,7 +526,7 @@ void initialiseStellarObjects(std::vector<StellarObject *> *galaxies,
   std::vector<std::thread> threads;
   // min, max is macro in windows.h -> replace
   threadNumber =
-      std::min((std::max(totalStarsystems / 10, 16)) / 16, MAX_CREATE_THREADS);
+      std::min((std::max(totalStarsystems / 10, 16)) / 16, getThreadCountCreate());
   printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
   amount = totalStarsystems / threadNumber;
   for (int i = 0; i < threadNumber - 1; i++) {

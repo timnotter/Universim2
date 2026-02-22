@@ -5,14 +5,19 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
 project(universim2)
 
+cmake_policy(SET CMP0072 NEW)
+set(OpenGL_GL_PREFERENCE GLVND)
 include_directories(${PROJECT_SOURCE_DIR}/universim2/include)
 
-find_package(X11)
-find_package (Threads)
-#find_package(OpenCL)
+find_package(X11 REQUIRED)
+find_package(Threads REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(glfw3 3.4 REQUIRED)
+find_package(OpenCL)
 
 add_executable(universim2 
   universim2/src/main.cpp 
+  universim2/src/extern/glad.c
 
   universim2/src/graphicInterface/renderer.cpp 
   universim2/src/graphicInterface/window.cpp 
@@ -38,8 +43,10 @@ add_executable(universim2
   universim2/src/helpers/treeCodeNode.cpp 
   universim2/src/helpers/timer.cpp
   universim2/src/helpers/simplexNoise.cpp)
-add_compile_options (-o, -O3, -pthread, -g)
+
+target_compile_options(universim2 PRIVATE -O3 -g -pthread)
 
 target_link_libraries(universim2 ${X11_LIBRARIES})
 target_link_libraries(universim2 ${CMAKE_THREAD_LIBS_INIT})
 #target_link_libraries(universim2 ${OpenCL_INCLUDE_DIRS})
+target_link_libraries(universim2 glfw OpenGL::GL dl)
