@@ -527,7 +527,7 @@ void initialiseStellarObjects(std::vector<StellarObject *> *galaxies,
   // min, max is macro in windows.h -> replace
   threadNumber =
       std::min((std::max(totalStarsystems / 10, 16)) / 16, getThreadCountCreate());
-  printf("Surpassed macros. Trying to start %d threads\n", threadNumber);
+  printf("Trying to start %d threads to create universe\n", threadNumber);
   amount = totalStarsystems / threadNumber;
   for (int i = 0; i < threadNumber - 1; i++) {
     // printf("Started thread number %d\n", i);

@@ -89,7 +89,7 @@ private:
   	// ID of OpenGL program
 	GLFWwindow* openGLWindow;
 	unsigned int shaderProgram;
-	unsigned int VA0, VB0;
+	unsigned int VA0, VB0, IBO;
 
   	// Distance one button press moves the camera, when not centring on an object
   	long double cameraMoveAmount = astronomicalUnit;

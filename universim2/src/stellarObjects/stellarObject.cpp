@@ -6,6 +6,7 @@
 #include "helpers/constants.hpp"
 #include "helpers/tree.hpp"
 #include "helpers/timer.hpp"
+#include "helpers/threadUtils.hpp"
 
 StellarObject::StellarObject(const char *name, int type, long double radius, long double mass, long double meanDistance, long double eccentricity, long double inclination){
     // this->name = name;
@@ -656,7 +657,7 @@ void StellarObject::startPlacementOfChildren(std::vector<StellarObject*> *childr
         }
         if(children->size() > 100){
             clock_gettime(CLOCK_MONOTONIC, &currTime);
-            printf("Placing all children of %s with one thread took: %ld mics\n", getName(), ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
+            printf("Placing all children of %s with %d thread  took: %ld mics\n", getName(), getThreadCountCreate(), ((1000000000*(currTime.tv_sec-prevTime.tv_sec)+(currTime.tv_nsec-prevTime.tv_nsec))/1000));
         }
         return;
     }

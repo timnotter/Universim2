@@ -14,6 +14,23 @@
 #include "helpers/plane.hpp"
 #include "helpers/threadUtils.hpp"
 
+#define GL_CALL(x) glClearError();\
+	x;\
+	glLogCall(#x, __FILE__, __LINE__)
+
+static void glClearError() {
+	while (glGetError() != GL_NO_ERROR);
+}
+
+static bool glLogCall(const char* function, const char* file, int line) {
+	while (GLenum error = glGetError()) {
+		std::cout << "[OpenGL Error] (" << error << "): " << function << " " << file << " " << line << "\n";
+		// TODO - This should probably not be done
+		std::exit(-1);
+	}
+	return true;
+}
+
 struct ShaderProgramSource {
 	std::string VertexSource;
 	std::string FragmentSource;
@@ -52,7 +69,7 @@ static ShaderProgramSource parseShaders(std::string sourcePath) {
 	return { ss[0].str(), ss[1].str() };
 }
 
-int createShader(GLenum type, const char* shaderSource) {
+static int createShader(GLenum type, const char* shaderSource) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &shaderSource, nullptr);
     glCompileShader(shader);
@@ -80,7 +97,8 @@ unsigned int openGLSetup(
 		GLFWwindow** window, 
 		unsigned int* shaderProgram,
 		unsigned int* VA0,
-		unsigned int* VB0
+		unsigned int* VB0,
+		unsigned int* IBO
 		) {
     // Initialize GLFW
     if (!glfwInit()) {
@@ -143,14 +161,23 @@ unsigned int openGLSetup(
          0.25f, -0.75f
     };
 
+	unsigned int indices[] = {
+		0, 1, 2,
+		3, 4, 5
+	};
+
     // Upload vertex data
     glGenVertexArrays(1, VA0);
-    glGenBuffers(1, VB0);
-
     glBindVertexArray(*VA0);
 
+    glGenBuffers(1, VB0);
     glBindBuffer(GL_ARRAY_BUFFER, *VB0);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glGenBuffers(1, IBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *IBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -180,7 +207,7 @@ Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject*> *galaxies, st
 
     rendererThreadCount = 1;
 	// OpenGL setup
-	if(openGLSetup(&this->openGLWindow, &this->shaderProgram, &this->VA0, &this->VB0)) {
+	if(openGLSetup(&this->openGLWindow, &this->shaderProgram, &this->VA0, &this->VB0, &this->IBO)) {
 		std::cout << "Could not set up OpenGL!\n";
 	}
 
@@ -195,8 +222,9 @@ void Renderer::drawOpenGL() {
 
         glUseProgram(shaderProgram);
         glBindVertexArray(this->VA0);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-		glDrawArrays(GL_TRIANGLES, 3, 3);
+
+		GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr));
+        //glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glfwSwapBuffers(this->openGLWindow);
 }
