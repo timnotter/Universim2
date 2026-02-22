@@ -1,10 +1,12 @@
-#include <GL/glew.h>
+#include <cstddef>
+#include <glad/glad.h>
+//#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 
 // Vertex shader
 const char* vertexShaderSource = R"(
-#version 330 core
+#version 460 core
 layout (location = 0) in vec2 aPos;
 
 void main() {
@@ -14,7 +16,7 @@ void main() {
 
 // Fragment shader
 const char* fragmentShaderSource = R"(
-#version 330 core
+#version 460 core
 out vec4 FragColor;
 
 void main() {
@@ -26,7 +28,24 @@ unsigned int createShader(GLenum type, const char* shaderSource) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &shaderSource, nullptr);
     glCompileShader(shader);
+
+	int result;
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
+	if (result == GL_FALSE) {
+		 int length;
+		 glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+		 char message[length];
+		 glGetShaderInfoLog(shader, length, &length, message);
+		 std::cout << "Could not compile shader: " << message << "\n";
+		 glDeleteShader(shader);
+		 return 0;
+	}
+
 	return shader;
+}
+
+void error_callback(int error, const char* description) {
+    std::cerr << "GLFW Error " << error << ": " << description << std::endl;
 }
 
 int main() {
@@ -36,10 +55,13 @@ int main() {
         return -1;
     }
 
+	glfwSetErrorCallback(error_callback);
+
     // Request OpenGL 3.3 core profile
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
 
     // Create window
     GLFWwindow* window = glfwCreateWindow(800, 600, "Universim 2", nullptr, nullptr);
@@ -51,19 +73,29 @@ int main() {
 
 	int major, minor, rev;
 	glfwGetVersion(&major, &minor, &rev);
-	std::cout << "GLFS version: " << major << "." << minor << "/" << rev << "\n";
-
-	// Does not work :(
-	//glGetIntegerv(GL_MAJOR_VERSION, &major);
-	//glGetIntegerv(GL_MINOR_VERSION, &minor); 
+	std::cout << "GLFW version: " << major << "." << minor << "/" << rev << "\n";
 
 	glfwMakeContextCurrent(window);
+	std::cout << "Made context\n";
 
+	//const GLubyte* version = glGetString(GL_VERSION);
+	//std::cout << "OpenGL version: " << version << std::endl;
+
+	// GLEW does not work :(
 	// Needs valid OpenGL context
-	if (glewInit() != GLEW_OK) {
-		std::cerr << "Failed to initialize GLEW\n";
-		return -1;
-	}
+	//GLenum rc = glewInit();
+	//if (rc != GLEW_OK) {
+	//	const unsigned char* err = glewGetErrorString(rc);
+	//	std::cerr << "Failed to initialize GLEW: " << err << "\n";
+	//	return -1;
+	//}
+	// Initialize GLAD AFTER creating context
+	//int gladVersion = gladLoadGL();
+	//if (gladVersion == 0) {
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "Failed to initialize GLAD\n";
+        return -1;
+    }
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
