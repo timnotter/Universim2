@@ -24,7 +24,9 @@
 #include "helpers/matrix3d.hpp"
 #include "helpers/positionVector.hpp"
 
-#define SHADER_SOURCE_PATH "/home/tim/programming/cpp/Universim2/universim2/include/graphicInterface/basic.shader"
+#define BASIC_SHADER_SOURCE_PATH "/home/tim/programming/cpp/Universim2/universim2/include/graphicInterface/basic.shader"
+#define BACKGROUND_SHADER_SOURCE_PATH "/home/tim/programming/cpp/Universim2/universim2/include/graphicInterface/background.shader"
+#define CLOSE_OBJECTS_SHADER_SOURCE_PATH "/home/tim/programming/cpp/Universim2/universim2/include/graphicInterface/closeObjects.shader"
 //#define SHADER_SOURCE_PATH "include/graphicInterface/basic.shader"
 
 #define SCREEN_HEIGHT 600 // Initial values
@@ -88,8 +90,21 @@ private:
 
   	// ID of OpenGL program
 	GLFWwindow* openGLWindow;
-	unsigned int shaderProgram;
-	unsigned int VA0, VB0, IBO;
+
+	// Program to render basic objects (DEBUG)
+	unsigned int basicProgram;
+	// Background buffers
+	unsigned int basicVAO, basicVBO, basicIBO;
+
+	// Program to render background objects
+	unsigned int backgroundProgram;
+	// Background buffers
+	unsigned int bgVAO, bgVBO, bgIBO;
+
+	// Program to render close objects
+	unsigned int closeObjectsProgram;
+	// Close object buffers
+	unsigned int cVAO, cVBO, cIBO;
 
   	// Distance one button press moves the camera, when not centring on an object
   	long double cameraMoveAmount = astronomicalUnit;
@@ -140,6 +155,15 @@ private:
 
   	// Determines how many threads the renderer currently is using
   	int8_t rendererThreadCount;
+	
+	// These are helper functions to setup/draw OpenGL
+	int setupBasicShader();
+	int setupBackgroundShader();
+	int setupCloseObjectsShader();
+	int drawBasicShader();
+	int drawBackgroundShader();
+	int drawCloseObjectsShader();
+	//int loadData();
 
 public:
   	// This can be toggled to display certain information
@@ -150,6 +174,8 @@ public:
   	         std::mutex *currentlyUpdatingOrDrawingLock,
   	         int *optimalTimeLocalUpdate);
 
+	// Setup OpenGL environment
+	int setupOpenGL();
 	// Draw with OpenGL
 	void drawOpenGL();
 	// Cleanup OpenGL

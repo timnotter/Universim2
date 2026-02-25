@@ -14,6 +14,46 @@
 #include <string>
 #include <thread>
 
+// TODO: Use unions such that we can reference fields with 
+// different names
+struct Vec3double {
+	double x, y, z;
+};
+
+// TODO: Use unions such that we can reference fields with 
+// different names
+struct Vec4double {
+	double x, y, z, length;
+};
+
+// TODO: Use unions such that we can reference fields with 
+// different names
+struct Vec4float {
+	float r, g, b, a;
+};
+
+struct BasicVertex {
+	Vec3double position;
+	Vec4float colour;
+};
+
+// In the background we renderer points with various sizes
+// TODO, maybe also draw an additional cross in the middle 
+// for better fading effects
+// We can use the same buffers, but a different program,
+// then we would only have to switch the program loaded with
+// the correct shaders
+struct BackgroundVertex {
+	Vec3double position;
+	Vec4float colour;
+};
+
+struct CloseObjectVertex {
+	Vec3double position;
+	Vec4float colour;
+	Vec4double normal;
+};
+
 #define GL_CALL(x)                                                             \
     glClearError();                                                            \
     x;                                                                         \
@@ -92,89 +132,6 @@ void error_callback(int error, const char *description) {
     std::cerr << "GLFW Error " << error << ": " << description << std::endl;
 }
 
-unsigned int openGLSetup(GLFWwindow **window, unsigned int *shaderProgram,
-                         unsigned int *VA0, unsigned int *VB0,
-                         unsigned int *IBO) {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW\n";
-        return -1;
-    }
-
-    glfwSetErrorCallback(error_callback);
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
-    // glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
-
-    // Create window
-    *window = glfwCreateWindow(800, 600, "Universim 2", nullptr, nullptr);
-    if (!window) {
-        std::cerr << "Failed to create window\n";
-        glfwTerminate();
-        return -1;
-    }
-
-    int major, minor, rev;
-    glfwGetVersion(&major, &minor, &rev);
-    std::cout << "GLFW version: " << major << "." << minor << "/" << rev
-              << "\n";
-
-    glfwMakeContextCurrent(*window);
-    std::cout << "Made context\n";
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cout << "Failed to initialize GLAD\n";
-        return -1;
-    }
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // --- Compile shaders ---
-    ShaderProgramSource shaders = parseShaders(SHADER_SOURCE_PATH);
-    GLuint vertexShader =
-        createShader(GL_VERTEX_SHADER, shaders.VertexSource.c_str());
-    GLuint fragmentShader =
-        createShader(GL_FRAGMENT_SHADER, shaders.FragmentSource.c_str());
-
-    // --- Link shader program ---
-    *shaderProgram = glCreateProgram();
-    glAttachShader(*shaderProgram, vertexShader);
-    glAttachShader(*shaderProgram, fragmentShader);
-    glLinkProgram(*shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    // Triangle vertices (centered)
-    float vertices[] = {0.0f,   0.5f,  -0.5f,  -0.5f,  0.5f,  -0.5f,
-                        -0.25f, 0.25f, -0.75f, -0.75f, 0.25f, -0.75f};
-
-    unsigned int indices[] = {0, 1, 2, 3, 4, 5};
-
-    // Upload vertex data
-    glGenVertexArrays(1, VA0);
-    glBindVertexArray(*VA0);
-
-    glGenBuffers(1, VB0);
-    glBindBuffer(GL_ARRAY_BUFFER, *VB0);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glGenBuffers(1, IBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *IBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-                 GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float),
-                          (void *)0);
-    glEnableVertexAttribArray(0);
-
-    return (0);
-}
-
 Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject *> *galaxies,
                    std::vector<StellarObject *> *allObjects, Date *date,
                    std::mutex *currentlyUpdatingOrDrawingLock,
@@ -202,41 +159,268 @@ Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject *> *galaxies,
 
     rendererThreadCount = 1;
     // OpenGL setup
-    if (openGLSetup(&this->openGLWindow, &this->shaderProgram, &this->VA0,
-                    &this->VB0, &this->IBO)) {
+    if (setupOpenGL()) {
         std::cout << "Could not set up OpenGL!\n";
     }
 
     // printf("Renderer constructor end\n");
 }
 
+static unsigned int prepareOpenGLProgram(
+	unsigned int* program,
+	std::string source
+) {
+    // --- Compile basic shader and add to programm
+    ShaderProgramSource Shaders = parseShaders(source);
+    unsigned int VertexShader =
+        createShader(GL_VERTEX_SHADER, Shaders.VertexSource.c_str());
+    unsigned int FragmentShader =
+        createShader(GL_FRAGMENT_SHADER, Shaders.FragmentSource.c_str());
+    *program = glCreateProgram();
+    glAttachShader(*program, VertexShader);
+    glAttachShader(*program, FragmentShader);
+	glLinkProgram(*program);
+    glDeleteShader(VertexShader);
+    glDeleteShader(FragmentShader);
+
+	return 0;
+}
+
+int Renderer::setupBasicShader() {
+	if (prepareOpenGLProgram(&this->basicProgram, BASIC_SHADER_SOURCE_PATH)) {
+		std::cout << "Failed to prepare basic program\n";
+		return -1;
+	}
+
+	// Preparing basic
+    glLinkProgram(this->basicProgram);
+    glGenVertexArrays(1, &this->basicVAO);
+    glGenBuffers(1, &this->basicVBO);
+    glGenBuffers(1, &this->basicIBO);
+    glBindVertexArray(this->basicVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, this->basicVBO);
+	// Add Attribs
+    glVertexAttribLPointer(0, 3, GL_DOUBLE, sizeof(BasicVertex),
+                          (void *)0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(BasicVertex),
+                          (void *) (sizeof(Vec3double)));
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+	
+	glLinkProgram(0);
+	glBindVertexArray(0);
+
+	return 0;
+}
+
+int Renderer::setupBackgroundShader() {
+	if (prepareOpenGLProgram(&this->backgroundProgram, BACKGROUND_SHADER_SOURCE_PATH)) {
+		std::cout << "Failed to prepare background program\n";
+		return -1;
+	}
+
+	// Preparing background
+    glLinkProgram(this->backgroundProgram);
+    glGenVertexArrays(1, &this->bgVAO);
+    glGenBuffers(1, &this->bgVBO);
+    glGenBuffers(1, &this->bgIBO);
+    glBindVertexArray(this->bgVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, this->bgVBO);
+	// Add Attribs
+    glVertexAttribLPointer(0, 3, GL_DOUBLE, sizeof(BackgroundVertex),
+                          (void *)0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(BackgroundVertex),
+                          (void *) (sizeof(Vec3double)));
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+	
+	glLinkProgram(0);
+	glBindVertexArray(0);
+
+	return 0;
+}
+
+int Renderer::setupCloseObjectsShader() {
+	if (prepareOpenGLProgram(&this->closeObjectsProgram, CLOSE_OBJECTS_SHADER_SOURCE_PATH)) {
+		std::cout << "Failed to prepare basic program\n";
+		return -1;
+	}
+	// Preparing close objects
+    glLinkProgram(this->closeObjectsProgram);
+    glGenVertexArrays(1, &this->cVAO);
+    glGenBuffers(1, &this->cVBO);
+    glGenBuffers(1, &this->cIBO);
+    glBindVertexArray(this->cVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, this->cVBO);
+	// Add Attribs
+    glVertexAttribLPointer(0, 3, GL_DOUBLE, sizeof(CloseObjectVertex),
+                          (void *)0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(CloseObjectVertex),
+                          (void *) (sizeof(Vec3double)));
+    glVertexAttribLPointer(2, 4, GL_DOUBLE, sizeof(CloseObjectVertex),
+                          (void *) (sizeof(Vec3double) + sizeof(Vec4float)));
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+	
+	glLinkProgram(0);
+	glBindVertexArray(0);
+
+	return 0;
+}
+
+int Renderer::setupOpenGL() {
+    // Initialize GLFW
+    glfwSetErrorCallback(error_callback);
+    //glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+    //glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW\n";
+        return -1;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    // Create window
+    this->openGLWindow = glfwCreateWindow(800, 600, "Universim 2", nullptr, nullptr);
+    if (!this->openGLWindow) {
+        std::cerr << "Failed to create window\n";
+        glfwTerminate();
+        return -1;
+    }
+
+    int major, minor, rev;
+    glfwGetVersion(&major, &minor, &rev);
+    std::cout << "GLFW version: " << major << "." << minor << "/" << rev
+              << "\n";
+
+    glfwMakeContextCurrent(this->openGLWindow);
+    std::cout << "Made context\n";
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "Failed to initialize GLAD\n";
+        return -1;
+    }
+
+    //glEnable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	// Preparing all the programms
+    if (setupBasicShader()) {
+        std::cout << "Failed to setup basic shader\n";
+        return -1;
+    } else std::cout << "Setup basic shader\n";
+    if (setupBackgroundShader()) {
+        std::cout << "Failed to setup background shader\n";
+        return -1;
+    } else std::cout << "Setup background shader\n";
+    if (setupCloseObjectsShader()) {
+        std::cout << "Failed to setup close objects shader\n";
+        return -1;
+    } else std::cout << "Setup close objects shader\n";
+
+	return 0;
+}
+
+static double scale = 0.0f;
+static double scaleGrowth = 0.005;
+int Renderer::drawBasicShader() {
+    glUseProgram(this->basicProgram);
+
+	scale += scaleGrowth;
+	if (scale >= 1 || scale <= 0) scaleGrowth = -scaleGrowth;
+	BasicVertex vertices[6] = {
+		{ {-0.5+scale, 0.0, -0.5}, {1.0f, 0.0f, 0.0f, 0.2f} },
+		{ {-1.0+scale, 0.5, -0.5}, {0.0f, 1.0f, 0.0f, 0.2f} },
+		{ { 0.0+scale, 0.5, -0.5}, {0.0f, 0.0f, 1.0f, 0.2f} },
+		{ {-0.25, 0.25, -0.75}, {1.0f, 1.0f, 0.0f, 0.5f} },
+		{ {-0.75, 0.75, -0.75}, {1.0f, 0.0f, 1.0f, 0.5f} },
+		{ { 0.25, 0.75, -0.75}, {0.0f, 1.0f, 1.0f, 0.5f} },
+	};
+
+    unsigned int indices[] = {0, 1, 2, 3, 4, 5};
+
+    glBindVertexArray(this->basicVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, this->basicVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->basicIBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STREAM_DRAW);
+
+    int location = glGetUniformLocation(this->basicProgram, "u_Color");
+    //if (location == -1)
+    //    std::cout << "Location is -1\n";
+    GL_CALL(glUniform4f(location, 1.0f, 0.0f, 0.0f, 0.5f));
+
+    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr));
+    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT,
+                           (char *)(3 * sizeof(unsigned int))));
+
+	return 0;
+}
+
+int Renderer::drawBackgroundShader() {
+    glUseProgram(this->backgroundProgram);
+	BackgroundVertex vertices2[6] = {
+		{ { 1.0 , 1.0 , -0.5}, {1.0f, 0.0f, 0.0f, 1.0f} },
+		{ { 1.0 , 0.5 , -0.5}, {1.0f, 0.0f, 0.0f, 1.0f} },
+		{ { 0.5 , 0.5 , -0.5}, {1.0f, 0.0f, 0.0f, 1.0f} },
+		{ { 0.25, 0.25,  0.25}, {1.0f, 0.0f, 0.0f, 1.0f} },
+		{ { 0.75, 0.25,  0.25}, {1.0f, 0.0f, 0.0f, 1.0f} },
+		{ { 0.25, 0.75,  0.25}, {1.0f, 0.0f, 0.0f, 1.0f} },
+	};
+
+    unsigned int indices2[6] = {0, 1, 2, 3, 4, 5};
+
+    glBindVertexArray(this->bgVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, this->bgVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STREAM_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->bgIBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices2), indices2, GL_STREAM_DRAW);
+
+
+    int location = glGetUniformLocation(this->backgroundProgram, "u_Color");
+    //if (location == -1)
+    //    std::cout << "Location is -1\n";
+    GL_CALL(glUniform4f(location, 1.0f, 0.0f, 0.0f, 0.5f));
+
+    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr));
+    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT,
+                           (char *)(3 * sizeof(unsigned int))));
+	return 0;
+}
+
+int Renderer::drawCloseObjectsShader() {
+	return 0;
+}
+
 void Renderer::drawOpenGL() {
     glfwPollEvents();
 
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(this->shaderProgram);
-    glBindVertexArray(this->VA0);
+    if (drawBackgroundShader()) {
+        std::cout << "Failed to draw background shader\n";
+    }
+    if (drawCloseObjectsShader()) {
+        std::cout << "Failed to draw background shader\n";
+    }
+    if (drawBasicShader()) {
+        std::cout << "Failed to draw background shader\n";
+    }
 
-    int location = glGetUniformLocation(this->shaderProgram, "u_Color");
-    if (location == -1)
-        std::cout << "Location is -1\n";
-
-    GL_CALL(glUniform4f(location, 1.0f, 0.0f, 0.0f, 0.5f));
-    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr));
-    GL_CALL(glUniform4f(location, 0.0f, 1.0f, 0.0f, 0.5f));
-    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT,
-                           (char *)(3 * sizeof(unsigned int))));
-    // glDrawArrays(GL_TRIANGLES, 0, 6);
-
+	glUseProgram(0);
     glfwSwapBuffers(this->openGLWindow);
 }
 
 void Renderer::cleanupOpenGL() {
-    glDeleteVertexArrays(1, &this->VA0);
-    glDeleteBuffers(1, &this->VB0);
-    glDeleteProgram(this->shaderProgram);
+    glDeleteVertexArrays(1, &this->basicVAO);
+    glDeleteBuffers(1, &this->basicVBO);
+    glDeleteProgram(this->basicProgram);
 
     glfwTerminate();
 }

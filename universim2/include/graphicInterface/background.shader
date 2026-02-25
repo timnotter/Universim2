@@ -22,7 +22,7 @@ layout (location = 0) out vec4 FragColor;
 uniform vec4 u_Color;
 
 void main() {
-    FragColor = vColor;
-    //FragColor = u_Color;
+    //FragColor = vColor;
+    FragColor = u_Color;
 }
 
