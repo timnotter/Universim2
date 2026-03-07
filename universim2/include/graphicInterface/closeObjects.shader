@@ -3,6 +3,11 @@
 #version 450 core
 layout (location = 0) in dvec3 aPos;
 layout (location = 1) in vec4 aColor;
+layout (location = 2) in vec4 aNormal;
+
+uniform dvec3 uCameraPosition;
+uniform dvec3 uCameraDirection;
+uniform dmat3 uInvCamBaseTransMatrix;
 
 out vec4 vColor;
 
@@ -18,8 +23,6 @@ void main() {
 in vec4 vColor;
 
 layout (location = 0) out vec4 FragColor;
-
-uniform vec4 u_Color;
 
 void main() {
     FragColor = vColor;

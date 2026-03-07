@@ -63,6 +63,49 @@ typedef struct CloseObject_s {
   int size;
 } CloseObject;
 
+// TODO: Use unions such that we can reference fields with
+// different names
+struct Vec3double {
+    double x, y, z;
+};
+
+// TODO: Use unions such that we can reference fields with
+// different names
+struct Vec4double {
+    double x, y, z, length;
+};
+
+// TODO: Use unions such that we can reference fields with
+// different names
+struct Vec4float {
+    float r, g, b, a;
+};
+
+struct BasicVertex {
+    Vec3double position;
+    Vec4float colour;
+};
+
+// In the background we renderer points with various sizes
+// TODO, maybe also draw an additional cross in the middle
+// for better fading effects
+// We can use the same buffers, but a different program,
+// then we would only have to switch the program loaded with
+// the correct shaders
+struct BackgroundVertex {
+    Vec3double position;
+	Vec3double distanceToCamera;
+    Vec4float colour;
+	double radius;
+};
+
+struct CloseObjectVertex {
+    Vec3double position;
+    Vec4float colour;
+    Vec4double normal;
+};
+
+
 // Functions for multithreading
 // Starts threads to calculate new positions of all objects
 void calculateObjectPositionsMultiThread(int start, int amount,
@@ -163,7 +206,19 @@ private:
 	int drawBasicShader();
 	int drawBackgroundShader();
 	int drawCloseObjectsShader();
-	//int loadData();
+	int gatherData();
+	int calculateVertices(
+		std::vector<BasicVertex> *basicVertices,
+		std::vector<BackgroundVertex> *backgroundVertices,
+		std::vector<CloseObjectVertex> *closeObjectVertices,
+		std::vector<unsigned int> *basicIndices,
+		std::vector<unsigned int> *backgroundIndices,
+		std::vector<unsigned int> *closeObjectsIndices
+	);
+	int addCameraUniforms();
+
+	// Updates the position
+	int updatePositionSnapshot();
 
 public:
   	// This can be toggled to display certain information
