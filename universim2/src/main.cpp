@@ -126,7 +126,7 @@ void readMoonFile(std::string fileLocation, StellarObject *parent);
 
 int main(int argc, char **argv) {
     // Initialise base things
-    printf("Starting main\n");
+    printf("Starting main function\n");
     MyWindow myWindow;
     bool isRunning = true;
     bool isPaused = true;

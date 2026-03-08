@@ -98,6 +98,7 @@ Renderer::Renderer(MyWindow *myWindow, std::vector<StellarObject *> *galaxies,
                    std::vector<StellarObject *> *allObjects, Date *date,
                    std::mutex *currentlyUpdatingOrDrawingLock,
                    int *optimalTimeLocalUpdate) {
+	this->pointCount = 0;
     this->myWindow = myWindow;
     this->galaxies = galaxies;
     this->allObjects = allObjects;
@@ -319,16 +320,27 @@ int Renderer::addCameraUniforms() {
 	location = glGetUniformLocation(this->backgroundProgram, "uInvCamBaseTransMatrix");
 	// TODO: Maybe we do not even have to allocate but create a function in Matrix
 	double invCamBaseTransMatrix[9] = {
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(0).getX()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(1).getX()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(2).getX()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(0).getY()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(1).getY()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(2).getY()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(0).getZ()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(1).getZ()),
-		static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(2).getZ())
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(0).getX()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(0).getY()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(0).getZ()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(1).getX()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(1).getY()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(1).getZ()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(2).getX()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(2).getY()),
+		static_cast<double>(this->inverseTransformationMatrixCameraBasis.getVector(2).getZ())
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(0).getX()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(1).getX()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(2).getX()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(0).getY()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(1).getY()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(2).getY()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(0).getZ()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(1).getZ()),
+		//static_cast<double>(inverseTransformationMatrixCameraBasis.getVector(2).getZ())
 	};
+	std::cout << "invCamBaseTransMatrix: \n";
+	this->inverseTransformationMatrixCameraBasis.print();
     GL_CALL(glUniformMatrix3dv(location, 
     	1,
         GL_FALSE,
@@ -367,9 +379,12 @@ int Renderer::drawBackgroundShader() {
 		printf("Could not add camera uniforms");
 	}
 
-    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr));
-    GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT,
-                           (char *)(3 * sizeof(unsigned int))));
+	glPointSize(5.0f);
+	GL_CALL(glDrawArrays(GL_POINTS, 0, this->pointCount));
+	//GL_CALL(glDrawArrays(GL_POINTS, 0, this->pointCount));
+    //GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr));
+    //GL_CALL(glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT,
+    //                       (char *)(3 * sizeof(unsigned int))));
 
     return 0;
 }
@@ -401,16 +416,18 @@ int addBackgroundVertex(
 	std::vector<BackgroundVertex> *backgroundVertices,
 	std::vector<unsigned int> *backgroundIndices
 ) {
+	// TODO:
+	// This does not work, somehow. The camerposition has no impact
 	backgroundVertices->push_back({
 		{ 
 			static_cast<double>(object->getPosition().getX()),
-			static_cast<double>(object->getPosition().getX()),
-			static_cast<double>(object->getPosition().getX())
+			static_cast<double>(object->getPosition().getY()),
+			static_cast<double>(object->getPosition().getZ())
 		},
 		{ 
 			static_cast<double>(distance->getX()),
-			static_cast<double>(distance->getX()),
-			static_cast<double>(distance->getX())
+			static_cast<double>(distance->getY()),
+			static_cast<double>(distance->getZ())
 		},
 		{
 			1.0f, 1.0f, 1.0f, 1.0f
@@ -434,6 +451,8 @@ int Renderer::calculateVertices(
 	int objectCount = this->allObjects->size();
 	for (int i = 0; i < objectCount; i++) {
 		StellarObject *object = this->allObjects->at(i);
+        if (object->getType() == STARSYSTEM)
+            continue;
     	// First we calculate the distancevector from camera to object
 		//PositionVector distance =
 		//	PositionVector(object->getPositionAtPointInTime().getX() -
@@ -456,17 +475,23 @@ int Renderer::calculateVertices(
 		long double size = object->getRadius() / distance.getLength();
 		double cutoff = 1.0 / 1000000000;
 		if (size < cutoff) {
-			continue;
+			//continue;
 		}
 
 
 		// If size is to large, we ignore it for now
 		if (size > 0.001) {
-			
+			continue;
 		}
 
 		// Render as point
 		addBackgroundVertex(object, &distance, backgroundVertices, backgroundIndices);
+		//if (i == 1000) {
+		//	std::cout << "First vertex: \n" << distance.toString() << ", in double: \n"
+		//		<< backgroundVertices->at(backgroundVertices->size() - 1).distanceToCamera.x << ", "
+		//		<< backgroundVertices->at(backgroundVertices->size() - 1).distanceToCamera.y << ", "
+		//		<< backgroundVertices->at(backgroundVertices->size() - 1).distanceToCamera.z << "\n"; 
+		//}
 	}	
 	return 0;
 }
@@ -489,7 +514,7 @@ int Renderer::gatherData() {
 		&closeObjectsIndices
 	);
 
-
+	this->pointCount = static_cast<int>(backgroundVertices.size() / 2);
 	
     //scale += scaleGrowth;
     //if (scale >= 1 || scale <= 0)

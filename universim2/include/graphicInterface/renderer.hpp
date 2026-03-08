@@ -128,6 +128,7 @@ int quicksortInsert(int start, int end, std::vector<DrawObject *> *vector);
 
 class Renderer {
 private:
+	int pointCount;
   	MyWindow *myWindow;
   	Date *date;
 
